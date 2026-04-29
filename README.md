@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CTIMER MVP
 
-## Getting Started
+Temporizador sincronizado para eventos multi-salón con Next.js App Router y Supabase.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router
+- Supabase Auth anónimo, Postgres, RLS, Realtime y Storage
+- RPC-only writes para acciones admin
+- UI técnico/moderna basada en los HTML de marca entregados
+
+## Variables de entorno
+
+Crea `.env.local`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+En Supabase, habilita **Anonymous Sign-ins** en Auth.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Base de datos
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+El contrato SQL vive en:
 
-## Learn More
+```bash
+supabase/schema.sql
+```
 
-To learn more about Next.js, take a look at the following resources:
+Ese archivo parte del `schema.sql` base entregado y añade una sección incremental mínima:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- publicación Realtime para `timers`, `timer_messages`, `timer_assets`, `timer_asset_force`
+- RPCs de compatibilidad `admin_set_sponsor_mode` y `admin_upsert_asset`
+- bucket público `ctimer-sponsors` y policies de Storage para admins autenticados
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+El modelo locked se mantiene: `status = scheduled|paused|ended` y `running` se deriva con server time entre `start_at` y `end_at`.
 
-## Deploy on Vercel
+## Desarrollo
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm install
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Rutas principales:
+
+- `/` home con crear/unirse
+- `/create` creación de sesión, QR, viewer link y admin link
+- `/admin?code=XXXXXX&token=YYYY` panel Master
+- `/join?code=XXXXXX` viewer fullscreen
+
+## Verificación
+
+```bash
+npm run lint
+npm run build
+```
+
+Flujo manual recomendado:
+
+- crear timer y guardar el admin link
+- abrir 4 viewers con el mismo código
+- probar start, pause, resume, reset y end
+- editar inicio/duración/fin durante running
+- enviar y limpiar mensaje activo
+- probar sponsor ordered/random, timed force, hold force y clear force
+- simular desconexión en un viewer y confirmar polling/resync
