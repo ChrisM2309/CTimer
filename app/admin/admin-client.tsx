@@ -319,6 +319,7 @@ export function AdminClient({
           ) : null}
         </div>
 
+        {/** EN CASO DE NO TENER TIMER Y/O TOKEN */}
         {!timerId ? (
           <Panel className="max-w-3xl">
             <SectionHeader
@@ -349,7 +350,7 @@ export function AdminClient({
         ) : null}
 
         {timer ? (
-          <div className="grid gap-6 xl:grid-cols-[.95fr_1.05fr]">
+          <div className="grid gap-6">
             <div className="grid gap-6">
               <Panel tone="dark" className="grid gap-5 p-4 sm:p-5">
                 <TimerFace

@@ -6,14 +6,16 @@ import { Panel } from "@/components/ui/panel";
 export default function Home() {
   return (
     <main className="app-shell">
+        {/* Hero */}
       <section className="tech-grid red-corner min-h-[72vh] px-5 py-6 text-[var(--color-light)] md:px-8 md:py-10">
-        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.08fr_.92fr] lg:items-center">
+        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.10fr_.90fr] lg:items-center">
+          {/** TITULO IZQUIERDO */}
           <div className="py-10 md:py-20">
             <p className="mb-5 text-xs font-black uppercase tracking-[.28em] text-white/62">
               CTIMER · sincronización para eventos
             </p>
             <h1 className="max-w-5xl text-[clamp(4.2rem,12vw,9rem)] font-black uppercase leading-[.86] tracking-[-.06em]">
-              Timer <span className="text-[var(--color-red)]">preciso</span> para multi-salón.
+              Timer <span className="text-[var(--color-red)]">preciso</span> para multi-salón
             </h1>
             <p className="mt-7 max-w-3xl text-lg font-medium leading-8 text-white/76">
               Crea un código, proyecta el link en varios salones y controla tiempo,
@@ -30,7 +32,7 @@ export default function Home() {
               </ActionLink>
             </div>
           </div>
-
+          {/** TUTORIAL DERECHO */}
           <Panel tone="dark" className="relative z-10">
             <div className="mb-8 flex items-center justify-between gap-4">
               <div>
@@ -45,7 +47,7 @@ export default function Home() {
             </div>
             <div className="grid gap-3">
               {[
-                ["01", "1 código por sesión", "Viewers entran por link, QR o código manual."],
+                ["01", "1 código por sesión", "Viewers entran por link, QR o código."],
                 ["02", "Master único", "Start, pause, reset, mensajes y sponsor strip."],
                 ["03", "Resiliente", "Cuenta local y re-sincroniza con server time."],
               ].map(([step, title, copy]) => (
@@ -66,11 +68,12 @@ export default function Home() {
               ))}
             </div>
           </Panel>
+
         </div>
       </section>
 
       <section className="light-grid px-5 py-10 md:px-8" id="join">
-        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[.92fr_1.08fr]">
+        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[.90fr_1.10fr]">
           <Panel>
             <p className="mb-3 text-[11px] font-black uppercase tracking-[.22em] text-[var(--color-red)]">
               Acceso rápido
