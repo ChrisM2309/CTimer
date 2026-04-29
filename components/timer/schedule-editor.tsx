@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DateTime } from "luxon";
-import { Field, TextInput } from "@/components/ui/field";
+import { Field, SelectField, TextInput } from "@/components/ui/field";
 import type { ScheduleValues } from "@/lib/types";
 import {
   buildScheduleValues,
   dateTimeToLocalInput,
+  EVENT_TIMEZONES,
   localInputToDateTime,
   secondsBetween,
   toLocalInput,
@@ -37,6 +37,15 @@ export function ScheduleEditor({
   const [endLocal, setEndLocal] = useState(initialLocal.end);
   const [durationSeconds, setDurationSeconds] = useState(initialLocal.duration);
   const [timezone, setTimezone] = useState(initialLocal.timezone);
+  const timezoneOptions = useMemo(() => {
+    const knownOption = EVENT_TIMEZONES.find((option) => option.value === timezone);
+    if (knownOption) return EVENT_TIMEZONES;
+
+    return [
+      { label: `${timezone} (actual)`, value: timezone || "UTC" },
+      ...EVENT_TIMEZONES,
+    ];
+  }, [timezone]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -148,18 +157,19 @@ export function ScheduleEditor({
               value={durationSeconds}
             />
           </Field>
-          <Field label="Timezone">
-            <TextInput
-              className="text-[13px] sm:text-sm"
+          <Field  
+          label="Zona horaria">
+            <SelectField
               disabled={disabled}
-              onBlur={() => {
-                if (!DateTime.local().setZone(timezone).isValid) {
-                  setTimezone("UTC");
-                }
-              }}
               onChange={(event) => handleTimezoneChange(event.target.value)}
               value={timezone}
-            />
+            >
+              {timezoneOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectField>
           </Field>
         </div>
       </div>

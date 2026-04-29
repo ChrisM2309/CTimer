@@ -1,6 +1,21 @@
 import { DateTime } from "luxon";
 import type { ScheduleValues } from "@/lib/types";
 
+export const EVENT_TIMEZONES = [
+  { label: "El Salvador (GMT-6)", value: "America/El_Salvador" },
+  { label: "Ciudad de Mexico (GMT-6)", value: "America/Mexico_City" },
+  { label: "Guatemala (GMT-6)", value: "America/Guatemala" },
+  { label: "Costa Rica (GMT-6)", value: "America/Costa_Rica" },
+  { label: "Bogota (GMT-5)", value: "America/Bogota" },
+  { label: "Lima (GMT-5)", value: "America/Lima" },
+  { label: "Panama (GMT-5)", value: "America/Panama" },
+  { label: "Santiago (GMT-4)", value: "America/Santiago" },
+  { label: "Santo Domingo (GMT-4)", value: "America/Santo_Domingo" },
+  { label: "New York (GMT-5 / GMT-4)", value: "America/New_York" },
+  { label: "Madrid (GMT+1 / GMT+2)", value: "Europe/Madrid" },
+  { label: "UTC", value: "UTC" },
+] as const;
+
 export function getDefaultTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }

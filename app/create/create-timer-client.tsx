@@ -111,7 +111,7 @@ export function CreateTimerClient() {
               <Field label="Nombre del timer">
                 <TextInput
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Hackathon C3 · Final"
+                  placeholder="Ej. Nuevo timer"
                   value={name}
                 />
               </Field>

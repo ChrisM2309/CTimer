@@ -100,7 +100,7 @@ export function SponsorStrip({
       <div className="flex items-center justify-center gap-3">
         <img
           alt="Sponsor activo"
-          className="h-24 max-w-full object-contain sm:h-32 lg:h-36"
+          className="h-28 max-w-full object-contain sm:h-40 lg:h-48"
           src={activeAsset.url}
         />
         {forcedAsset ? (

@@ -4,15 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Ban,
   Copy,
-  ImagePlus,
+  ExternalLink,
   Loader2,
   Pause,
   Play,
+  QrCode,
   RotateCcw,
   Save,
   Square,
   Upload,
 } from "lucide-react";
+import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, SelectField, TextArea, TextInput } from "@/components/ui/field";
@@ -63,11 +65,11 @@ export function AdminClient({
   const [schedule, setSchedule] = useState<ScheduleValues | null>(null);
   const [message, setMessage] = useState("");
   const [messageDurationSeconds, setMessageDurationSeconds] = useState(20);
-  const [assetUrl, setAssetUrl] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [forceSeconds, setForceSeconds] = useState(20);
   const [sponsorMode, setSponsorMode] = useState<SponsorMode>("ordered");
   const [rotationSeconds, setRotationSeconds] = useState(10);
+  const [viewerQrDataUrl, setViewerQrDataUrl] = useState<string | null>(null);
 
   const { bundle, connectionState, error: dataError, refresh, serverOffsetMs } =
     useTimerData(timerId);
@@ -93,6 +95,10 @@ export function AdminClient({
   const sponsorSettingsDirty = timer
     ? sponsorMode !== timer.sponsor_mode || rotationSeconds !== timer.rotation_seconds
     : false;
+  const viewerLink = useMemo(() => {
+    if (typeof window === "undefined" || !code) return "";
+    return `${window.location.origin}/join?code=${code}`;
+  }, [code]);
   const shouldConfirmStart = Boolean(
     snapshot &&
       snapshot.state !== "ended" &&
@@ -116,6 +122,19 @@ export function AdminClient({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!viewerLink) return;
+
+    QRCode.toDataURL(viewerLink, {
+      margin: 1,
+      scale: 6,
+      color: {
+        dark: "#161616",
+        light: "#f3e7d9",
+      },
+    }).then(setViewerQrDataUrl);
+  }, [viewerLink]);
 
   const connectAdmin = useCallback(async () => {
     if (!code || !token) {
@@ -233,27 +252,6 @@ export function AdminClient({
     }
   }
 
-  async function addAssetFromUrl(url: string) {
-    if (!url.trim()) return;
-
-    setBusy("asset-url");
-    setError(null);
-
-    try {
-      await adminUpsertAsset(code, token, {
-        enabled: true,
-        sortOrder: assets.length + 1,
-        url,
-      });
-      setAssetUrl("");
-      await refresh();
-    } catch (nextError) {
-      setError(safeErrorMessage(nextError));
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function addUploadedAsset() {
     if (!uploadFile || !timerId) return;
 
@@ -262,7 +260,12 @@ export function AdminClient({
 
     try {
       const url = await uploadSponsorImage(timerId, uploadFile);
-      await addAssetFromUrl(url);
+      await adminUpsertAsset(code, token, {
+        enabled: true,
+        sortOrder: assets.length + 1,
+        url,
+      });
+      await refresh();
       setUploadFile(null);
       if (uploadInputRef.current) {
         uploadInputRef.current.value = "";
@@ -299,6 +302,25 @@ export function AdminClient({
     } finally {
       setBusy(null);
     }
+  }
+
+  function copyText(value: string) {
+    if (!value) return;
+    navigator.clipboard?.writeText(value);
+  }
+
+  function openViewer() {
+    if (!viewerLink) return;
+    window.open(viewerLink, "_blank", "noopener,noreferrer");
+  }
+
+  function downloadViewerQr() {
+    if (!viewerQrDataUrl || !code) return;
+
+    const link = document.createElement("a");
+    link.href = viewerQrDataUrl;
+    link.download = `ctimer-${code.toLowerCase()}-viewer-qr.png`;
+    link.click();
   }
 
   const confirm = {
@@ -376,6 +398,7 @@ export function AdminClient({
                 <TimerFace
                   className="shadow-none"
                   serverOffsetMs={serverOffsetMs}
+                  showTenths
                   timer={timer}
                   variant="admin"
                 />
@@ -390,8 +413,9 @@ export function AdminClient({
                     />
                     <ConnectionStatus state={connectionState} />
                   </div>
-                  <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                     <Button
+                      className="min-h-10"
                       disabled={Boolean(busy)}
                       onClick={triggerStart}
                       size="sm"
@@ -400,6 +424,7 @@ export function AdminClient({
                       Start
                     </Button>
                     <Button
+                      className="min-h-10"
                       disabled={Boolean(busy) || snapshot?.state !== "running"}
                       onClick={() => runAction("pause")}
                       size="sm"
@@ -409,6 +434,7 @@ export function AdminClient({
                       Pause
                     </Button>
                     <Button
+                      className="min-h-10"
                       disabled={Boolean(busy) || timer.status !== "paused"}
                       onClick={() => runAction("resume")}
                       size="sm"
@@ -418,6 +444,7 @@ export function AdminClient({
                       Resume
                     </Button>
                     <Button
+                      className="min-h-10"
                       disabled={Boolean(busy)}
                       onClick={() => setConfirmKind("reset")}
                       size="sm"
@@ -427,7 +454,7 @@ export function AdminClient({
                       Reset
                     </Button>
                     <Button
-                      className="sm:col-span-2 lg:col-span-3"
+                      className="min-h-10 sm:col-span-2 xl:col-span-4"
                       disabled={Boolean(busy)}
                       onClick={() => setConfirmKind("end")}
                       size="sm"
@@ -435,6 +462,50 @@ export function AdminClient({
                     >
                       <Square size={16} aria-hidden />
                       End / Cancelar sesión
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-2 rounded-[20px] border border-white/10 bg-black/18 p-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <Button
+                      className="min-h-10"
+                      onClick={() => copyText(code)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Copy size={14} aria-hidden />
+                      Copiar codigo
+                    </Button>
+                    <Button
+                      className="min-h-10"
+                      onClick={() => copyText(viewerLink)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Copy size={14} aria-hidden />
+                      Copiar viewer link
+                    </Button>
+                    <Button
+                      className="min-h-10"
+                      disabled={!viewerQrDataUrl || !viewerLink}
+                      onClick={downloadViewerQr}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <QrCode size={14} aria-hidden />
+                      Descargar QR
+                    </Button>
+                    <Button
+                      className="min-h-10"
+                      onClick={openViewer}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <ExternalLink size={14} aria-hidden />
+                      Abrir viewer
                     </Button>
                   </div>
                 </div>
@@ -548,25 +619,10 @@ export function AdminClient({
                   variant={sponsorSettingsDirty ? "primary" : "secondary"}
                 >
                   <Save size={16} aria-hidden />
-                  {sponsorSettingsDirty ? "Guardar modo **" : "Guardar modo"}
+                  {sponsorSettingsDirty ? "Guardar modo *" : "Guardar modo"}
                 </Button>
 
                 <div className="mt-6 grid gap-4 rounded-[28px] border border-black/10 bg-white/60 p-4">
-                  <Field label="Agregar por URL">
-                    <TextInput
-                      onChange={(event) => setAssetUrl(event.target.value)}
-                      placeholder="https://..."
-                      value={assetUrl}
-                    />
-                  </Field>
-                  <Button
-                    disabled={busy === "asset-url" || !assetUrl.trim()}
-                    onClick={() => addAssetFromUrl(assetUrl)}
-                    variant="warm"
-                  >
-                    <ImagePlus size={16} aria-hidden />
-                    Agregar URL
-                  </Button>
                   <div className="grid gap-3">
                     <p className="text-[11px] font-black uppercase tracking-[.18em] text-black/55">
                       Upload a Storage
@@ -756,9 +812,6 @@ function AssetEditor({
           <Button onClick={() => onForce(asset.id, "timed")} size="sm" variant="warm">
             Forzar timed
           </Button>
-          <Button onClick={() => onForce(asset.id, "hold")} size="sm" variant="danger">
-            Manual hold
-          </Button>
           <button
             className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[.12em] text-black/50"
             onClick={() => navigator.clipboard?.writeText(asset.url)}
@@ -776,7 +829,7 @@ function AssetEditor({
 function PendingIndicator({ label }: { label: string }) {
   return (
     <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(197,23,46,.28)] bg-[rgba(197,23,46,.08)] px-3 py-2 text-[11px] font-black uppercase tracking-[.14em] text-[var(--color-red)]">
-      ** {label}
+      * {label}
     </span>
   );
 }

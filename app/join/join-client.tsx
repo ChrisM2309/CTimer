@@ -21,6 +21,7 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
   const autoJoinedRef = useRef(false);
   const { bundle, connectionState, error: dataError, serverOffsetMs } =
     useTimerData(timerId);
+  const hasSponsors = Boolean(bundle?.assets.some((asset) => asset.enabled));
 
   const handleJoin = useCallback(
     async (nextCode = code) => {
@@ -149,18 +150,22 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
         <TimerFace
           className="flex-1"
           contentAboveTimer={
-            <SponsorStrip
-              assets={bundle.assets}
-              className="mx-auto w-full max-w-3xl rounded-[24px] border border-white/10 bg-black/45 px-4 py-4 backdrop-blur sm:px-5 sm:py-5"
-              force={bundle.force}
-              mode={bundle.timer.sponsor_mode}
-              rotationSeconds={bundle.timer.rotation_seconds}
-              serverOffsetMs={serverOffsetMs}
-            />
+            hasSponsors ? (
+              <SponsorStrip
+                assets={bundle.assets}
+                className="mx-auto w-full max-w-4xl rounded-[24px] border border-white/10 bg-black/45 px-5 py-5 backdrop-blur sm:px-6 sm:py-6"
+                force={bundle.force}
+                mode={bundle.timer.sponsor_mode}
+                rotationSeconds={bundle.timer.rotation_seconds}
+                serverOffsetMs={serverOffsetMs}
+              />
+            ) : null
           }
           serverOffsetMs={serverOffsetMs}
+          showTenths
           timer={bundle.timer}
           variant="viewer"
+          viewerHasSponsors={hasSponsors}
         />
       </div>
     </main>
