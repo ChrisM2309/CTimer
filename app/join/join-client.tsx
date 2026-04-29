@@ -148,19 +148,21 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
 
         <TimerFace
           className="flex-1"
+          contentAboveTimer={
+            <SponsorStrip
+              assets={bundle.assets}
+              className="mx-auto w-full max-w-3xl rounded-[24px] border border-white/10 bg-black/45 px-4 py-4 backdrop-blur sm:px-5 sm:py-5"
+              force={bundle.force}
+              mode={bundle.timer.sponsor_mode}
+              rotationSeconds={bundle.timer.rotation_seconds}
+              serverOffsetMs={serverOffsetMs}
+            />
+          }
           serverOffsetMs={serverOffsetMs}
           timer={bundle.timer}
           variant="viewer"
         />
       </div>
-
-      <SponsorStrip
-        assets={bundle.assets}
-        force={bundle.force}
-        mode={bundle.timer.sponsor_mode}
-        rotationSeconds={bundle.timer.rotation_seconds}
-        serverOffsetMs={serverOffsetMs}
-      />
     </main>
   );
 }

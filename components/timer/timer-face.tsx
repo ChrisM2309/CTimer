@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import type { TimerRow } from "@/lib/types";
@@ -9,11 +10,13 @@ import { cn } from "@/lib/utils";
 
 export function TimerFace({
   className,
+  contentAboveTimer,
   serverOffsetMs,
   timer,
   variant = "panel",
 }: {
   className?: string;
+  contentAboveTimer?: ReactNode;
   serverOffsetMs: number;
   timer: TimerRow;
   variant?: "admin" | "panel" | "viewer";
@@ -49,7 +52,12 @@ export function TimerFace({
     >
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.045)_1px,transparent_1px)] bg-[size:32px_32px]" />
       <div className="relative z-10">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-3",
+            variant === "admin" ? "mb-3" : "mb-5",
+          )}
+        >
           <div>
             <p className="text-[11px] font-black uppercase tracking-[.24em] text-white/55">
               CTIMER · {timer.code}
@@ -70,13 +78,19 @@ export function TimerFace({
           <StatusBadge tone={stateTone(snapshot.state)}>{snapshot.label}</StatusBadge>
         </div>
 
+        {contentAboveTimer ? (
+          <div className={cn(variant === "viewer" ? "mb-6" : "mb-4")}>
+            {contentAboveTimer}
+          </div>
+        ) : null}
+
         <div
           className={cn(
             "font-black leading-none tracking-[-.05em] text-[var(--color-light)] tabular-nums",
             variant === "viewer"
               ? "text-[clamp(5rem,20vw,18rem)]"
               : variant === "admin"
-                ? "text-[clamp(3rem,7.2vw,5.4rem)] whitespace-nowrap"
+                ? "text-[clamp(2.4rem,5.8vw,4.3rem)] whitespace-nowrap"
                 : "text-[clamp(3.6rem,9vw,7rem)]",
           )}
         >
@@ -84,19 +98,34 @@ export function TimerFace({
         </div>
 
         {snapshot.state === "scheduled" ? (
-          <p className="mt-4 text-sm font-bold uppercase tracking-[.14em] text-[var(--color-warm)]">
+          <p
+            className={cn(
+              "font-bold uppercase tracking-[.14em] text-[var(--color-warm)]",
+              variant === "admin" ? "mt-3 text-xs" : "mt-4 text-sm",
+            )}
+          >
             Inicia en {formatSeconds(snapshot.startsInSeconds)}
           </p>
         ) : null}
 
-        <div className="mt-7 h-3 overflow-hidden rounded-full bg-white/10">
+        <div
+          className={cn(
+            "overflow-hidden rounded-full bg-white/10",
+            variant === "admin" ? "mt-4 h-2" : "mt-7 h-3",
+          )}
+        >
           <div
             className="h-full rounded-full bg-[var(--color-red)] transition-[width] duration-300"
             style={{ width: `${snapshot.progress * 100}%` }}
           />
         </div>
 
-        <div className="mt-5 grid gap-3 text-xs font-bold uppercase tracking-[.12em] text-white/55 sm:grid-cols-3">
+        <div
+          className={cn(
+            "grid gap-3 font-bold uppercase tracking-[.12em] text-white/55 sm:grid-cols-3",
+            variant === "admin" ? "mt-4 text-[11px]" : "mt-5 text-xs",
+          )}
+        >
           <span>Inicio: {start}</span>
           <span>Fin: {end}</span>
           <span>Zona: {timer.timezone}</span>

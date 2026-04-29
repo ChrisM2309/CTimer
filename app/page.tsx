@@ -6,22 +6,20 @@ import { Panel } from "@/components/ui/panel";
 export default function Home() {
   return (
     <main className="app-shell">
-        {/* Hero */}
-      <section className="tech-grid red-corner min-h-[72vh] px-5 py-6 text-[var(--color-light)] md:px-8 md:py-10">
-        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.10fr_.90fr] lg:items-center">
-          {/** TITULO IZQUIERDO */}
-          <div className="py-10 md:py-20">
+      <section className="tech-grid red-corner min-h-[64vh] px-5 py-6 text-[var(--color-light)] md:px-8 md:py-10">
+        <div className="relative z-10 mx-auto grid max-w-7xl gap-7 lg:grid-cols-[1fr_.86fr] lg:items-center">
+          <div className="py-8 md:py-14">
             <p className="mb-5 text-xs font-black uppercase tracking-[.28em] text-white/62">
               CTIMER · sincronización para eventos
             </p>
-            <h1 className="max-w-5xl text-[clamp(4.2rem,12vw,9rem)] font-black uppercase leading-[.86] tracking-[-.06em]">
+            <h1 className="max-w-4xl text-[clamp(3.3rem,9.6vw,7.2rem)] font-black uppercase leading-[.88] tracking-[-.05em]">
               Timer <span className="text-[var(--color-red)]">preciso</span> para multi-salón
             </h1>
-            <p className="mt-7 max-w-3xl text-lg font-medium leading-8 text-white/76">
+            <p className="mt-6 max-w-2xl text-base font-medium leading-7 text-white/74 md:text-lg md:leading-8">
               Crea un código, proyecta el link en varios salones y controla tiempo,
               mensajes y sponsors desde un único panel Master.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <ActionLink href="/create" size="lg">
                 <Plus size={18} aria-hidden />
                 Crear timer
@@ -32,18 +30,18 @@ export default function Home() {
               </ActionLink>
             </div>
           </div>
-          {/** TUTORIAL DERECHO */}
-          <Panel tone="dark" className="relative z-10">
-            <div className="mb-8 flex items-center justify-between gap-4">
+
+          <Panel tone="dark" className="relative z-10 p-5 sm:p-6">
+            <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[.22em] text-[var(--color-warm)]">
                   Live system
                 </p>
-                <h2 className="mt-2 text-3xl font-black uppercase tracking-[-.04em]">
+                <h2 className="mt-2 text-2xl font-black uppercase tracking-[-.04em] sm:text-3xl">
                   Operación sincronizada
                 </h2>
               </div>
-              <MonitorPlay className="text-[var(--color-red)]" size={34} aria-hidden />
+              <MonitorPlay className="text-[var(--color-red)]" size={30} aria-hidden />
             </div>
             <div className="grid gap-3">
               {[
@@ -52,10 +50,10 @@ export default function Home() {
                 ["03", "Resiliente", "Cuenta local y re-sincroniza con server time."],
               ].map(([step, title, copy]) => (
                 <div
-                  className="grid grid-cols-[58px_1fr] gap-4 rounded-[24px] border border-white/10 bg-white/[.045] p-4"
+                  className="grid grid-cols-[52px_1fr] gap-3 rounded-[20px] border border-white/10 bg-white/[.045] p-3.5 sm:grid-cols-[58px_1fr] sm:gap-4 sm:p-4"
                   key={step}
                 >
-                  <span className="grid size-11 place-items-center rounded-full bg-[var(--color-red)] text-xs font-black">
+                  <span className="grid size-10 place-items-center rounded-full bg-[var(--color-red)] text-xs font-black sm:size-11">
                     {step}
                   </span>
                   <div>
@@ -68,7 +66,6 @@ export default function Home() {
               ))}
             </div>
           </Panel>
-
         </div>
       </section>
 

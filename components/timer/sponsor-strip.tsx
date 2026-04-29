@@ -14,21 +14,20 @@ function shuffle<T>(items: T[]) {
 
 export function SponsorStrip({
   assets,
+  className,
   force,
   mode,
   rotationSeconds,
   serverOffsetMs,
 }: {
   assets: TimerAssetRow[];
+  className?: string;
   force: TimerAssetForceRow | null;
   mode: SponsorMode;
   rotationSeconds: number;
   serverOffsetMs: number;
 }) {
-  const enabledAssets = useMemo(
-    () => assets.filter((asset) => asset.enabled),
-    [assets],
-  );
+  const enabledAssets = useMemo(() => assets.filter((asset) => asset.enabled), [assets]);
   const [index, setIndex] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now() + serverOffsetMs);
   const [randomAssets, setRandomAssets] = useState<TimerAssetRow[]>([]);
@@ -88,23 +87,24 @@ export function SponsorStrip({
       : enabledAssets[index % Math.max(enabledAssets.length, 1)];
 
   if (!activeAsset) {
-    return (
-      <div className="border-t border-white/10 bg-black/50 px-5 py-4 text-center text-[11px] font-black uppercase tracking-[.18em] text-white/38">
-        Sponsor strip listo para imágenes
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="border-t border-white/10 bg-black/68 px-4 py-3 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-center">
+    <div
+      className={
+        className ??
+        "mx-auto mb-4 w-full max-w-6xl rounded-[26px] border border-white/10 bg-black/55 px-4 py-4 backdrop-blur sm:mb-5 sm:px-6 sm:py-5"
+      }
+    >
+      <div className="flex items-center justify-center gap-3">
         <img
           alt="Sponsor activo"
-          className="h-14 max-w-full object-contain sm:h-20"
+          className="h-24 max-w-full object-contain sm:h-32 lg:h-36"
           src={activeAsset.url}
         />
         {forcedAsset ? (
-          <span className="ml-4 rounded-full border border-[rgba(201,176,138,.42)] px-3 py-1 text-[10px] font-black uppercase tracking-[.16em] text-[var(--color-warm)]">
+          <span className="rounded-full border border-[rgba(201,176,138,.42)] px-3 py-1 text-[10px] font-black uppercase tracking-[.16em] text-[var(--color-warm)]">
             Force
           </span>
         ) : null}

@@ -44,7 +44,7 @@ import { createDefaultSchedule } from "@/lib/schedule";
 import { deriveTimerSnapshot, getServerNowMs, stateTone } from "@/lib/timer";
 import { normalizeCode, safeErrorMessage } from "@/lib/utils";
 
-type ConfirmKind = "reset" | "end" | null;
+type ConfirmKind = "start" | "reset" | "end" | null;
 
 export function AdminClient({
   initialCode,
@@ -93,6 +93,12 @@ export function AdminClient({
   const sponsorSettingsDirty = timer
     ? sponsorMode !== timer.sponsor_mode || rotationSeconds !== timer.rotation_seconds
     : false;
+  const shouldConfirmStart = Boolean(
+    snapshot &&
+      snapshot.state !== "ended" &&
+      snapshot.progress > 0 &&
+      snapshot.progress < 1,
+  );
 
   useEffect(() => {
     if (!timer) return;
@@ -151,6 +157,14 @@ export function AdminClient({
     } finally {
       setBusy(null);
     }
+  }
+
+  function triggerStart() {
+    if (shouldConfirmStart) {
+      setConfirmKind("start");
+      return;
+    }
+    runAction("start");
   }
 
   async function saveSchedule() {
@@ -288,6 +302,12 @@ export function AdminClient({
   }
 
   const confirm = {
+    start: {
+      description:
+        "El timer ya está iniciado o avanzado. Si continúas con Start, se reiniciará desde ahora. ¿Confirmar?",
+      label: "Sí, reiniciar ahora",
+      title: "Confirmar Start",
+    },
     end: {
       description:
         "Esto terminará la sesión y los viewers verán FINALIZADO. ¿Confirmar?",
@@ -370,14 +390,19 @@ export function AdminClient({
                     />
                     <ConnectionStatus state={connectionState} />
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Button disabled={Boolean(busy)} onClick={() => runAction("start")}>
+                  <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                    <Button
+                      disabled={Boolean(busy)}
+                      onClick={triggerStart}
+                      size="sm"
+                    >
                       <Play size={16} aria-hidden />
                       Start
                     </Button>
                     <Button
                       disabled={Boolean(busy) || snapshot?.state !== "running"}
                       onClick={() => runAction("pause")}
+                      size="sm"
                       variant="ghost"
                     >
                       <Pause size={16} aria-hidden />
@@ -386,6 +411,7 @@ export function AdminClient({
                     <Button
                       disabled={Boolean(busy) || timer.status !== "paused"}
                       onClick={() => runAction("resume")}
+                      size="sm"
                       variant="warm"
                     >
                       <Play size={16} aria-hidden />
@@ -394,15 +420,17 @@ export function AdminClient({
                     <Button
                       disabled={Boolean(busy)}
                       onClick={() => setConfirmKind("reset")}
+                      size="sm"
                       variant="danger"
                     >
                       <RotateCcw size={16} aria-hidden />
                       Reset
                     </Button>
                     <Button
-                      className="sm:col-span-2"
+                      className="sm:col-span-2 lg:col-span-3"
                       disabled={Boolean(busy)}
                       onClick={() => setConfirmKind("end")}
+                      size="sm"
                       variant="danger"
                     >
                       <Square size={16} aria-hidden />
@@ -720,7 +748,7 @@ function AssetEditor({
             }
             variant={dirty ? "primary" : "secondary"}
           >
-            {dirty ? "Guardar **" : "Guardar"}
+            {dirty ? "Guardar *" : "Guardar"}
           </Button>
         </div>
         {dirty ? <PendingIndicator label="Asset sin guardar" /> : null}

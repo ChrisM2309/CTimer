@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { FooterSlot } from "@/components/layout/footer-slot";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -23,7 +24,10 @@ export default function RootLayout({
       lang="es"
       className={`${poppins.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <FooterSlot />
+      </body>
     </html>
   );
 }

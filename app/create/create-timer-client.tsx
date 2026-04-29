@@ -99,15 +99,15 @@ export function CreateTimerClient() {
           </Panel>
         ) : null}
 
-        <div className="grid gap-6 xl:grid-cols-[1.05fr_.95fr]">
-          <Panel>
+        <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.18fr)_minmax(360px,.82fr)] 2xl:items-start">
+          <Panel className="p-5 sm:p-6 md:p-7">
             <SectionHeader
               eyebrow="Master setup"
               title="Configuración base"
               description="Define el nombre visible, la programación y los ajustes iniciales de la franja de sponsors."
             />
 
-            <div className="grid gap-5">
+            <div className="grid gap-6">
               <Field label="Nombre del timer">
                 <TextInput
                   onChange={(event) => setName(event.target.value)}
@@ -118,7 +118,7 @@ export function CreateTimerClient() {
 
               <ScheduleEditor initial={defaultSchedule} onChange={setSchedule} />
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
                 <Field label="Modo sponsor">
                   <SelectField
                     onChange={(event) => setSponsorMode(event.target.value as SponsorMode)}
@@ -154,7 +154,7 @@ export function CreateTimerClient() {
             </div>
           </Panel>
 
-          <Panel tone="dark">
+          <Panel className="p-5 sm:p-6 2xl:self-start" tone="dark">
             <SectionHeader
               eyebrow="Output"
               title="Accesos"
@@ -168,7 +168,7 @@ export function CreateTimerClient() {
                   <p className="text-[11px] font-black uppercase tracking-[.18em] text-[var(--color-warm)]">
                     Código viewer
                   </p>
-                  <div className="mt-2 flex items-center justify-between gap-4">
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
                     <strong className="text-5xl font-black tracking-[.08em]">
                       {result.code}
                     </strong>
@@ -203,7 +203,7 @@ export function CreateTimerClient() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-[28px] border border-dashed border-white/15 bg-white/[.04] p-8 text-sm leading-6 text-white/55">
+              <div className="rounded-[28px] border border-dashed border-white/15 bg-white/[.04] p-8 text-sm leading-6 text-white/55 xl:min-h-[280px]">
                 Al crear la sesión aparecerán el código, el link viewer, el QR y
                 el link Master con token.
               </div>
@@ -238,8 +238,14 @@ function LinkRow({
             <Copy size={16} aria-hidden />
             Copiar
           </Button>
-          <ActionLink href={value} variant="ghost">
+          <ActionLink
+            href={value}
+            rel="noreferrer noopener"
+            target="_blank"
+            variant="ghost"
+          >
             <ExternalLink size={16} aria-hidden />
+            Abrir
           </ActionLink>
         </div>
       </div>

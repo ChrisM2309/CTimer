@@ -101,14 +101,14 @@ export function ScheduleEditor({
   }
 
   return (
-    <div className="rounded-[28px] border border-black/10 bg-white p-4 shadow-[0_12px_30px_rgba(0,0,0,.05)]">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="rounded-[28px] border border-black/10 bg-white p-4 shadow-[0_12px_30px_rgba(0,0,0,.05)] sm:p-5">
+      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[.2em] text-[var(--color-red)]">
-            Programación
+            Programacion
           </p>
           <p className="mt-1 text-sm leading-6 text-black/62">
-            Inicio, duración y fin se recalculan con la regla “último campo editado gana”.
+            Inicio, duracion y fin se recalculan con la regla &quot;ultimo campo editado gana&quot;.
           </p>
         </div>
         {showRunningWarning ? (
@@ -118,47 +118,53 @@ export function ScheduleEditor({
         ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_.74fr_1fr_.82fr]">
-        <Field label="Hora de inicio">
-          <TextInput
-            disabled={disabled}
-            onChange={(event) => handleStartChange(event.target.value)}
-            type="datetime-local"
-            value={startLocal}
-          />
-        </Field>
-        <Field label="Duración (segundos)">
-          <TextInput
-            disabled={disabled}
-            min={1}
-            onChange={(event) => handleDurationChange(event.target.value)}
-            type="number"
-            value={durationSeconds}
-          />
-        </Field>
-        <Field label="Hora de fin">
-          <TextInput
-            disabled={disabled}
-            onChange={(event) => handleEndChange(event.target.value)}
-            type="datetime-local"
-            value={endLocal}
-          />
-        </Field>
-        <Field label="Timezone">
-          <TextInput
-            disabled={disabled}
-            onBlur={() => {
-              if (!DateTime.local().setZone(timezone).isValid) {
-                setTimezone("UTC");
-              }
-            }}
-            onChange={(event) => handleTimezoneChange(event.target.value)}
-            value={timezone}
-          />
-        </Field>
+      <div className="grid gap-4">
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Field label="Hora de inicio">
+            <TextInput
+              disabled={disabled}
+              onChange={(event) => handleStartChange(event.target.value)}
+              type="datetime-local"
+              value={startLocal}
+            />
+          </Field>
+          <Field label="Hora de fin">
+            <TextInput
+              disabled={disabled}
+              onChange={(event) => handleEndChange(event.target.value)}
+              type="datetime-local"
+              value={endLocal}
+            />
+          </Field>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+          <Field label="Duracion (segundos)">
+            <TextInput
+              disabled={disabled}
+              min={1}
+              onChange={(event) => handleDurationChange(event.target.value)}
+              type="number"
+              value={durationSeconds}
+            />
+          </Field>
+          <Field label="Timezone">
+            <TextInput
+              className="text-[13px] sm:text-sm"
+              disabled={disabled}
+              onBlur={() => {
+                if (!DateTime.local().setZone(timezone).isValid) {
+                  setTimezone("UTC");
+                }
+              }}
+              onChange={(event) => handleTimezoneChange(event.target.value)}
+              value={timezone}
+            />
+          </Field>
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-black/8 pt-4">
         {[600, 1200, 1800, 3600, 5400].map((seconds) => (
           <button
             className="rounded-[14px] border border-[rgba(201,176,138,.68)] bg-[rgba(243,231,217,.72)] px-3 py-2 text-[11px] font-black uppercase tracking-[.12em] text-[var(--color-graphite)] transition hover:-translate-y-px hover:border-[var(--color-graphite)] disabled:opacity-50"
