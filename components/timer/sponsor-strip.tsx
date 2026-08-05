@@ -141,12 +141,12 @@ export function SponsorStrip({
         {displayName || displayTier ? (
           <div className="viewer-sponsor__label flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
             {displayTier ? (
-              <span className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--color-accent)]">
+              <span className="viewer-sponsor__tier text-[10px] font-bold uppercase tracking-[.18em] text-[var(--color-accent)]">
                 {displayTier}
               </span>
             ) : null}
             {displayName ? (
-              <span className="text-xs font-black uppercase tracking-[.14em] text-white/70">
+              <span className="viewer-sponsor__name text-xs font-black uppercase tracking-[.14em] text-white/70">
                 {displayName}
               </span>
             ) : null}
