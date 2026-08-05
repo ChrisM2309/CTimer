@@ -5,7 +5,8 @@ import { ArrowRight, Clock4, Crown, RefreshCw } from "lucide-react";
 import { ActionLink, Button } from "@/components/ui/button";
 import { EmptyState, Panel, SectionHeader } from "@/components/ui/panel";
 import type { MyTimerRow } from "@/lib/types";
-import { ensureAnonymousSession, listMyTimers } from "@/lib/supabase";
+import { listMyTimers } from "@/lib/supabase";
+import { useAuthState } from "@/components/auth/auth-provider";
 import { safeErrorMessage } from "@/lib/utils";
 
 function groupTimers(rows: MyTimerRow[]) {
@@ -15,6 +16,7 @@ function groupTimers(rows: MyTimerRow[]) {
 }
 
 export function MyTimers() {
+  const { state: authState } = useAuthState();
   const [rows, setRows] = useState<MyTimerRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,10 @@ export function MyTimers() {
     setLoading(true);
     setError(null);
     try {
-      await ensureAnonymousSession();
+      if (authState === "signed_out" || authState === "error") {
+        setRows([]);
+        return;
+      }
       const data = await listMyTimers({ limit: 12, offset: 0 });
       setRows(data);
     } catch (nextError) {
@@ -33,11 +38,11 @@ export function MyTimers() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authState]);
 
   useEffect(() => {
-    queueMicrotask(refresh);
-  }, [refresh]);
+    if (authState !== "loading") queueMicrotask(() => void refresh());
+  }, [authState, refresh]);
 
   return (
     <Panel>

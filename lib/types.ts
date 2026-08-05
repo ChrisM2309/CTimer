@@ -9,6 +9,8 @@ export type TimerRow = {
   id: string;
   code: string;
   name: string;
+  owner_id: string;
+  owner_is_anonymous: boolean;
   timezone: string;
   start_at: string;
   end_at: string;

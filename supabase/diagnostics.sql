@@ -59,3 +59,25 @@ where n.nspname = 'public'
     'admin_clear_force'
   )
 order by check_type, name;
+
+select
+  'ownership' as check_type,
+  column_name as name,
+  'ok' as status
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'timers'
+  and column_name in ('owner_id', 'owner_is_anonymous')
+order by name;
+
+select 'legacy_data' as check_type,
+       'timers without owner_id' as name,
+       count(*)::text as status
+from public.timers
+where owner_id is null;
+
+select schemaname, tablename, policyname, cmd
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('timers', 'timer_messages', 'timer_assets', 'timer_asset_force')
+order by tablename, policyname;

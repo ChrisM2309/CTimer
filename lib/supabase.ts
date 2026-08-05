@@ -5,6 +5,7 @@ import {
   type RealtimeChannel,
   type RealtimePostgresChangesPayload,
   type SupabaseClient,
+  type User,
 } from "@supabase/supabase-js";
 import type {
   AdminAction,
@@ -25,6 +26,74 @@ const SPONSOR_BUCKET = "ctimer-sponsors";
 
 let browserClient: SupabaseClient | null = null;
 
+function decodeJwtPayload(token: string) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(normalized)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export function isAnonymousUser(user: User | null | undefined, accessToken?: string) {
+  if (!user) return false;
+  const userRecord = user as User & {
+    is_anonymous?: boolean;
+  };
+  const tokenClaims = userRecord.app_metadata?.provider === "anonymous"
+    ? { is_anonymous: true }
+    : null;
+
+  return Boolean(
+    userRecord.is_anonymous ||
+      tokenClaims?.is_anonymous ||
+      decodeJwtPayload(accessToken ?? (user as User & { access_token?: string }).access_token ?? "")
+        ?.is_anonymous === true,
+  );
+}
+
+function isAnonymousStoredSession(value: string) {
+  try {
+    const parsed = JSON.parse(value) as {
+      user?: User & { is_anonymous?: boolean };
+      access_token?: string;
+    };
+    return Boolean(
+      parsed.user?.is_anonymous ||
+        parsed.user?.app_metadata?.provider === "anonymous" ||
+        decodeJwtPayload(parsed.access_token ?? "")?.is_anonymous === true,
+    );
+  } catch {
+    return false;
+  }
+}
+
+function createSessionAwareStorage() {
+  return {
+    getItem(key: string) {
+      if (typeof window === "undefined") return null;
+      return window.sessionStorage.getItem(key) ?? window.localStorage.getItem(key);
+    },
+    setItem(key: string, value: string) {
+      if (typeof window === "undefined") return;
+      if (isAnonymousStoredSession(value)) {
+        window.sessionStorage.setItem(key, value);
+        window.localStorage.removeItem(key);
+      } else {
+        window.localStorage.setItem(key, value);
+        window.sessionStorage.removeItem(key);
+      }
+    },
+    removeItem(key: string) {
+      if (typeof window === "undefined") return;
+      window.sessionStorage.removeItem(key);
+      window.localStorage.removeItem(key);
+    },
+  };
+}
+
 export function isSupabaseConfigured() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
@@ -40,8 +109,9 @@ export function getSupabaseBrowserClient() {
     browserClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: true,
         persistSession: true,
+        storage: createSessionAwareStorage(),
       },
       realtime: {
         params: {
@@ -62,7 +132,19 @@ export async function ensureAnonymousSession() {
   } = await supabase.auth.getSession();
 
   if (sessionError) throw sessionError;
-  if (session) return session;
+  if (session) {
+    // Migrate legacy anonymous sessions out of localStorage. Account sessions
+    // continue to use localStorage through the storage adapter above.
+    if (isAnonymousUser(session.user, session.access_token)) {
+      const { data: migrated, error: migrationError } = await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+      if (migrationError) throw migrationError;
+      return migrated.session ?? session;
+    }
+    return session;
+  }
 
   const { data, error } = await supabase.auth.signInAnonymously();
   if (error) throw error;
@@ -86,6 +168,53 @@ export async function getCurrentSession() {
 export async function getCurrentUser() {
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return data.user;
+}
+
+export async function signUpWithPassword(email: string, password: string) {
+  const cleaned = email.trim().toLowerCase();
+  if (!cleaned) throw new Error("Ingresa un email válido.");
+  if (password.length < 8) {
+    throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  }
+
+  const { data, error } = await getSupabaseBrowserClient().auth.signUp({
+    email: cleaned,
+    password,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function signInWithPassword(email: string, password: string) {
+  const cleaned = email.trim().toLowerCase();
+  if (!cleaned || !password) throw new Error("Ingresa email y contraseña.");
+
+  const { data, error } = await getSupabaseBrowserClient().auth.signInWithPassword({
+    email: cleaned,
+    password,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function sendPasswordReset(email: string, redirectTo?: string) {
+  const cleaned = email.trim().toLowerCase();
+  if (!cleaned) throw new Error("Ingresa un email válido.");
+
+  const { error } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(cleaned, {
+    redirectTo,
+  });
+  if (error) throw error;
+}
+
+export async function updatePassword(password: string) {
+  if (password.length < 8) {
+    throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  }
+
+  const { data, error } = await getSupabaseBrowserClient().auth.updateUser({ password });
   if (error) throw error;
   return data.user;
 }
@@ -114,7 +243,7 @@ export async function signInWithEmailOtp(email: string, options?: { redirectTo?:
 
 export async function signOut() {
   const supabase = getSupabaseBrowserClient();
-  const { error } = await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut({ scope: "local" });
   if (error) throw error;
 }
 
@@ -386,13 +515,14 @@ export async function uploadSponsorImage(timerId: string, file: File) {
 
 export function subscribeToTimer(
   timerId: string,
+  userId: string,
   onChange: (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => void,
   onStatus: (status: string) => void,
 ): RealtimeChannel {
   const supabase = getSupabaseBrowserClient();
 
   return supabase
-    .channel(`timer:${timerId}`)
+    .channel(`timer:${timerId}:${userId}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "timers", filter: `id=eq.${timerId}` },

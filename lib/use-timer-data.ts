@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { TimerBundle } from "@/lib/types";
+import { useAuthState } from "@/components/auth/auth-provider";
 import {
   fetchTimerBundle,
   getServerTimeOffset,
@@ -13,6 +14,8 @@ import { safeErrorMessage } from "@/lib/utils";
 export type ConnectionState = "connecting" | "connected" | "reconnecting";
 
 export function useTimerData(timerId: string | null) {
+  const { state: authState, user } = useAuthState();
+  const authUserId = user?.id ?? null;
   const [bundle, setBundle] = useState<TimerBundle | null>(null);
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [connectionState, setConnectionState] =
@@ -20,6 +23,7 @@ export function useTimerData(timerId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const refreshInFlight = useRef(false);
   const connectionStateRef = useRef<ConnectionState>("connecting");
+  const viewGenerationRef = useRef(0);
 
   const setConnection = useCallback((nextState: ConnectionState) => {
     connectionStateRef.current = nextState;
@@ -33,7 +37,8 @@ export function useTimerData(timerId: string | null) {
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!timerId || refreshInFlight.current) return;
+    const generation = viewGenerationRef.current;
+    if (!timerId || !authUserId || refreshInFlight.current) return;
 
     refreshInFlight.current = true;
 
@@ -42,58 +47,73 @@ export function useTimerData(timerId: string | null) {
         fetchTimerBundle(timerId),
         syncServerTime(),
       ]);
-      setBundle(nextBundle);
-      setError(null);
+      if (generation === viewGenerationRef.current) {
+        setBundle(nextBundle);
+        setError(null);
+      }
     } catch (nextError) {
-      setError(safeErrorMessage(nextError));
-      if (connectionStateRef.current === "connected") {
+      if (generation === viewGenerationRef.current) {
+        setError(safeErrorMessage(nextError));
+      }
+      if (generation === viewGenerationRef.current && connectionStateRef.current === "connected") {
         setConnection("reconnecting");
       }
     } finally {
       refreshInFlight.current = false;
     }
-  }, [setConnection, syncServerTime, timerId]);
+  }, [authUserId, setConnection, syncServerTime, timerId]);
 
   useEffect(() => {
-    if (!timerId) return;
+    const generation = viewGenerationRef.current + 1;
+    viewGenerationRef.current = generation;
+    queueMicrotask(() => {
+      if (generation === viewGenerationRef.current) {
+        setBundle(null);
+        setError(null);
+        setConnection("connecting");
+      }
+    });
+
+    if (!timerId || !authUserId || authState === "loading" || authState === "signed_out") return;
 
     let channel: RealtimeChannel | null = null;
     let cancelled = false;
 
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setConnection("connecting");
-        refresh();
+    const connect = async () => {
+      try {
+        await refresh();
+        if (cancelled) return;
+
+        channel = subscribeToTimer(
+          timerId,
+          authUserId,
+          () => {
+            void refresh();
+          },
+          (status) => {
+            if (cancelled) return;
+
+            if (status === "SUBSCRIBED") {
+              setConnection("connected");
+              void refresh();
+            } else if (
+              status === "CHANNEL_ERROR" ||
+              status === "TIMED_OUT" ||
+              status === "CLOSED"
+            ) {
+              setConnection("reconnecting");
+            }
+          },
+        );
+      } catch (nextError) {
+        if (!cancelled) {
+          setError(safeErrorMessage(nextError));
+          setConnection("reconnecting");
+        }
       }
-    });
+    };
 
-    try {
-      channel = subscribeToTimer(
-        timerId,
-        () => {
-          refresh();
-        },
-        (status) => {
-          if (cancelled) return;
-
-          if (status === "SUBSCRIBED") {
-            setConnection("connected");
-            refresh();
-          } else if (
-            status === "CHANNEL_ERROR" ||
-            status === "TIMED_OUT" ||
-            status === "CLOSED"
-          ) {
-            setConnection("reconnecting");
-          }
-        },
-      );
-    } catch (nextError) {
-      queueMicrotask(() => {
-        setError(safeErrorMessage(nextError));
-        setConnection("reconnecting");
-      });
-    }
+    void connect();
 
     const poll = window.setInterval(() => {
       if (connectionStateRef.current !== "connected") {
@@ -105,10 +125,10 @@ export function useTimerData(timerId: string | null) {
       cancelled = true;
       window.clearInterval(poll);
       if (channel) {
-        channel.unsubscribe();
+        void channel.unsubscribe();
       }
     };
-  }, [refresh, setConnection, timerId]);
+  }, [authState, authUserId, refresh, setConnection, timerId]);
 
   return {
     bundle,

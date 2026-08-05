@@ -36,6 +36,11 @@ Ese archivo parte del `schema.sql` base entregado y añade una sección incremen
 
 El modelo locked se mantiene: `status = scheduled|paused|ended` y `running` se deriva con server time entre `start_at` y `end_at`.
 
+DespuÃ©s de aplicar el esquema base, aplica en orden las migraciones versionadas de
+`supabase/migrations/`. La migraciÃ³n de Epic 2 (`20260805_epic2_auth_ownership.sql`)
+agrega `owner_id`, aÃ­sla timers creados por visitantes anÃ³nimos y bloquea por RLS
+los registros antiguos sin propietario verificable. No reasigna ni elimina datos.
+
 ## Desarrollo
 
 ```bash
@@ -54,8 +59,13 @@ Rutas principales:
 
 ```bash
 npm run lint
+npm run typecheck
 npm run build
 ```
+
+Las pruebas de aislamiento de RLS deben ejecutarse desde dos sesiones distintas
+(incluyendo dos sesiones anÃ³nimas) con `supabase/security-tests.sql`. No uses una
+clave service role para esas pruebas, porque omite RLS.
 
 Flujo manual recomendado:
 

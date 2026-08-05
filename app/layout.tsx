@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Montserrat, Poppins } from "next/font/google";
 import { FooterSlot } from "@/components/layout/footer-slot";
 import { HeaderSlot } from "@/components/layout/header-slot";
+import { AuthProvider } from "@/components/auth/auth-provider";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -66,9 +67,11 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${montserrat.variable} ${poppins.variable} h-full`}>
       <body className="min-h-full">
-        <HeaderSlot />
-        {children}
-        <FooterSlot />
+        <AuthProvider>
+          <HeaderSlot />
+          {children}
+          <FooterSlot />
+        </AuthProvider>
       </body>
     </html>
   );
