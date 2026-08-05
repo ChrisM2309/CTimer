@@ -348,6 +348,14 @@ textarea {
   overflow: hidden;
 }
 
+.viewer-sponsor__media--light {
+  background: #fff;
+}
+
+.viewer-sponsor__media--dark {
+  background: #000;
+}
+
 .viewer-sponsor__image {
   display: block;
   min-width: 0;

@@ -116,7 +116,13 @@ export function SponsorStrip({
   return (
     <div className={cn("viewer-sponsor", className)}>
       <div className="viewer-sponsor__content">
-        <div className="viewer-sponsor__media">
+        <div
+          className={cn(
+            "viewer-sponsor__media",
+            activeAsset.background_mode === "light" && "viewer-sponsor__media--light",
+            activeAsset.background_mode === "dark" && "viewer-sponsor__media--dark",
+          )}
+        >
           <img
             alt={displayName ? `Sponsor: ${displayName}` : "Sponsor activo"}
             className="viewer-sponsor__image"

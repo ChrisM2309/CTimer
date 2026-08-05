@@ -1,6 +1,7 @@
 export type TimerStatus = "scheduled" | "paused" | "ended";
 export type EffectiveTimerState = "scheduled" | "running" | "paused" | "ended";
 export type SponsorMode = "ordered" | "random";
+export type SponsorBackground = "default" | "light" | "dark";
 export type ForceMode = "timed" | "hold";
 export type AdminAction = "start" | "pause" | "resume" | "reset" | "end";
 export type TimerMemberRole = "viewer" | "admin";
@@ -39,6 +40,7 @@ export type TimerAssetRow = {
   sort_order: number;
   sponsor_name?: string | null;
   sponsor_tier?: string | null;
+  background_mode?: SponsorBackground | null;
   updated_at?: string;
   created_at: string;
 };

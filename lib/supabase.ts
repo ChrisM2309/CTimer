@@ -391,6 +391,7 @@ export async function adminUpsertAsset(
     enabled: boolean;
     sponsorName?: string | null;
     sponsorTier?: string | null;
+    backgroundMode?: "default" | "light" | "dark";
     sortOrder: number;
     weight: number;
   },
@@ -405,6 +406,7 @@ export async function adminUpsertAsset(
     p_sort_order: asset.sortOrder,
     p_sponsor_name: asset.sponsorName ?? null,
     p_sponsor_tier: asset.sponsorTier ?? null,
+    p_background_mode: asset.backgroundMode ?? "default",
     p_weight: asset.weight,
   });
 

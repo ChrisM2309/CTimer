@@ -32,6 +32,7 @@ import { useTimerData } from "@/lib/use-timer-data";
 import type {
   AdminAction,
   ScheduleValues,
+  SponsorBackground,
   SponsorMode,
   TimerAssetRow,
 } from "@/lib/types";
@@ -54,6 +55,16 @@ import { deriveTimerSnapshot, getServerNowMs, stateTone } from "@/lib/timer";
 import { cn, normalizeCode, safeErrorMessage } from "@/lib/utils";
 
 type ConfirmKind = "start" | "reset" | "end" | null;
+
+const sponsorBackgroundOptions: Array<{
+  value: SponsorBackground;
+  label: string;
+  description: string;
+}> = [
+  { value: "default", label: "Por defecto", description: "Sin fondo adicional" },
+  { value: "light", label: "Fondo claro", description: "Blanco para logos oscuros" },
+  { value: "dark", label: "Fondo oscuro", description: "Negro para logos claros" },
+];
 
 export function AdminClient({
   initialCode,
@@ -296,6 +307,7 @@ export function AdminClient({
     try {
       const url = await uploadSponsorImage(timerId, uploadFile);
       await adminUpsertAsset(code, token, {
+        backgroundMode: "default",
         enabled: true,
         sortOrder: orderedAssets.length + 1,
         url,
@@ -332,6 +344,7 @@ export function AdminClient({
 
     try {
       await adminUpsertAsset(code, token, {
+        backgroundMode: "default",
         enabled: true,
         sortOrder: orderedAssets.length + 1,
         url,
@@ -360,6 +373,7 @@ export function AdminClient({
       await Promise.all([
         adminUpsertAsset(code, token, {
           enabled: current.enabled,
+          backgroundMode: current.background_mode ?? "default",
           id: current.id,
           sortOrder: next.sort_order,
           sponsorName: current.sponsor_name,
@@ -369,6 +383,7 @@ export function AdminClient({
         }),
         adminUpsertAsset(code, token, {
           enabled: next.enabled,
+          backgroundMode: next.background_mode ?? "default",
           id: next.id,
           sortOrder: current.sort_order,
           sponsorName: next.sponsor_name,
@@ -952,6 +967,7 @@ function AssetEditor({
     id: string;
     sponsorName?: string | null;
     sponsorTier?: string | null;
+    backgroundMode: SponsorBackground;
     sortOrder: number;
     weight: number;
     url: string;
@@ -963,6 +979,9 @@ function AssetEditor({
   const [weight, setWeight] = useState(asset.weight ?? 1);
   const [sponsorName, setSponsorName] = useState(asset.sponsor_name ?? "");
   const [sponsorTier, setSponsorTier] = useState(asset.sponsor_tier ?? "");
+  const [backgroundMode, setBackgroundMode] = useState<SponsorBackground>(
+    asset.background_mode ?? "default",
+  );
   const [previewError, setPreviewError] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const dirty =
@@ -971,7 +990,8 @@ function AssetEditor({
     sortOrder !== asset.sort_order ||
     weight !== (asset.weight ?? 1) ||
     sponsorName !== (asset.sponsor_name ?? "") ||
-    sponsorTier !== (asset.sponsor_tier ?? "");
+    sponsorTier !== (asset.sponsor_tier ?? "") ||
+    backgroundMode !== (asset.background_mode ?? "default");
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -981,13 +1001,23 @@ function AssetEditor({
       setWeight(asset.weight ?? 1);
       setSponsorName(asset.sponsor_name ?? "");
       setSponsorTier(asset.sponsor_tier ?? "");
+      setBackgroundMode(asset.background_mode ?? "default");
       setPreviewError(false);
     });
-  }, [asset.enabled, asset.sort_order, asset.sponsor_name, asset.sponsor_tier, asset.url, asset.weight]);
+  }, [asset.background_mode, asset.enabled, asset.sort_order, asset.sponsor_name, asset.sponsor_tier, asset.url, asset.weight]);
 
   return (
     <div className="grid gap-4 rounded-[24px] border border-black/10 bg-white/72 p-4 lg:grid-cols-[160px_1fr]">
-      <div className="relative grid min-h-32 place-items-center overflow-hidden rounded-[18px] bg-[var(--color-surface-dark)] p-3">
+      <div
+        className={cn(
+          "relative grid min-h-32 place-items-center overflow-hidden rounded-[18px] p-3",
+          backgroundMode === "light"
+            ? "bg-white"
+            : backgroundMode === "dark"
+              ? "bg-black"
+              : "bg-[var(--color-surface-dark)]",
+        )}
+      >
         {previewError ? (
           <div className="grid justify-items-center gap-2 text-center text-xs font-bold uppercase tracking-[.12em] text-white/60">
             <ImageOff size={24} aria-hidden />
@@ -1075,6 +1105,7 @@ function AssetEditor({
             onClick={() =>
               onSave({
                 enabled,
+                backgroundMode,
                 id: asset.id,
                 sortOrder,
                 sponsorName: sponsorName.trim() || null,
@@ -1088,6 +1119,46 @@ function AssetEditor({
             {dirty ? "Guardar *" : "Guardar"}
           </Button>
         </div>
+        <div className="grid gap-2 rounded-[18px] border border-black/10 bg-black/[.025] p-3">
+          <p className="text-[11px] font-black uppercase tracking-[.16em] text-black/55">
+            Fondo de esta imagen
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {sponsorBackgroundOptions.map((option) => {
+              const selected = backgroundMode === option.value;
+
+              return (
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-start gap-3 rounded-[16px] border px-3 py-3 transition",
+                    selected
+                      ? "border-[var(--color-primary)] bg-[rgb(32_82_152_/_8%)] text-[var(--color-primary)]"
+                      : "border-black/10 bg-white text-black/60 hover:border-[var(--color-primary)]",
+                  )}
+                  key={option.value}
+                >
+                  <input
+                    aria-label={option.label}
+                    checked={selected}
+                    onChange={() => setBackgroundMode(option.value)}
+                    type="checkbox"
+                  />
+                  <span className="grid gap-1">
+                    <span className="text-[11px] font-black uppercase tracking-[.12em]">
+                      {option.label}
+                    </span>
+                    <span className="text-xs font-semibold opacity-70">
+                      {option.description}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          <p className="text-xs leading-5 text-[var(--color-foreground-muted)]">
+            Solo se aplica detrás de este sponsor en el Viewer.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button
@@ -1097,7 +1168,7 @@ function AssetEditor({
               size="sm"
               title="Subir sponsor"
               type="button"
-              variant="ghost"
+              variant="primary"
             >
               <ArrowUp size={15} aria-hidden />
               Subir
@@ -1109,7 +1180,7 @@ function AssetEditor({
               size="sm"
               title="Bajar sponsor"
               type="button"
-              variant="ghost"
+              variant="primary"
             >
               <ArrowDown size={15} aria-hidden />
               Bajar

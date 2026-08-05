@@ -174,6 +174,7 @@ create table if not exists public.timer_assets (
   url text not null,
   enabled boolean not null default true,
   sort_order int not null default 0,
+  background_mode text not null default 'default',
   created_at timestamptz not null default now()
 );
 
@@ -978,6 +979,22 @@ begin
   end if;
 end $$;
 
+alter table public.timer_assets
+  add column if not exists background_mode text not null default 'default';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'timer_assets_background_mode_check'
+      and conrelid = 'public.timer_assets'::regclass
+  ) then
+    alter table public.timer_assets
+      add constraint timer_assets_background_mode_check
+      check (background_mode in ('default', 'light', 'dark'));
+  end if;
+end $$;
+
 create or replace function public.admin_update_timer_name(
   p_code text,
   p_admin_token text,
@@ -1090,6 +1107,7 @@ for each row execute function public.set_updated_at();
 
 -- Extend upsert RPC to support sponsor metadata (backwards compatible).
 drop function if exists public.admin_upsert_asset(text, text, uuid, text, boolean, integer, text, text);
+drop function if exists public.admin_upsert_asset(text, text, uuid, text, boolean, integer, text, text, integer);
 
 create or replace function public.admin_upsert_asset(
   p_code text,
@@ -1100,7 +1118,8 @@ create or replace function public.admin_upsert_asset(
   p_sort_order int default 0,
   p_sponsor_name text default null,
   p_sponsor_tier text default null,
-  p_weight int default 1
+  p_weight int default 1,
+  p_background_mode text default 'default'
 )
 returns uuid
 language plpgsql
@@ -1110,6 +1129,7 @@ as $$
 declare
   v_timer_id uuid;
   v_asset_id uuid;
+  v_background_mode text := lower(trim(coalesce(p_background_mode, 'default')));
 begin
   select id into v_timer_id
   from public.timers
@@ -1124,12 +1144,16 @@ begin
     raise exception 'Invalid admin token';
   end if;
 
+  if v_background_mode not in ('default', 'light', 'dark') then
+    raise exception 'Invalid sponsor background mode';
+  end if;
+
   if p_asset_id is null then
     if p_url is null or length(trim(p_url)) = 0 then
       raise exception 'url required';
     end if;
 
-    insert into public.timer_assets(timer_id, url, enabled, sort_order, sponsor_name, sponsor_tier, weight)
+    insert into public.timer_assets(timer_id, url, enabled, sort_order, sponsor_name, sponsor_tier, weight, background_mode)
     values (
       v_timer_id,
       trim(p_url),
@@ -1137,7 +1161,8 @@ begin
       coalesce(p_sort_order, 0),
       nullif(trim(coalesce(p_sponsor_name, '')), ''),
       nullif(trim(coalesce(p_sponsor_tier, '')), ''),
-      coalesce(p_weight, 1)
+      coalesce(p_weight, 1),
+      v_background_mode
     )
     returning id into v_asset_id;
 
@@ -1150,7 +1175,8 @@ begin
       sort_order = coalesce(p_sort_order, sort_order),
       sponsor_name = coalesce(nullif(trim(coalesce(p_sponsor_name, '')), ''), sponsor_name),
        sponsor_tier = coalesce(nullif(trim(coalesce(p_sponsor_tier, '')), ''), sponsor_tier),
-       weight = coalesce(p_weight, weight)
+       weight = coalesce(p_weight, weight),
+       background_mode = v_background_mode
   where id = p_asset_id
     and timer_id = v_timer_id
   returning id into v_asset_id;
@@ -1161,6 +1187,9 @@ begin
 
   return v_asset_id;
 end $$;
+
+revoke execute on function public.admin_upsert_asset(text, text, uuid, text, boolean, integer, text, text, integer, text) from public;
+grant execute on function public.admin_upsert_asset(text, text, uuid, text, boolean, integer, text, text, integer, text) to authenticated;
 
 -- Delete sponsor asset row (does not delete Storage object).
 create or replace function public.admin_delete_asset(
