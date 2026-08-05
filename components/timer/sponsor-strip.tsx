@@ -13,6 +13,16 @@ function shuffle<T>(items: T[]) {
   return next;
 }
 
+function weightedPool(assets: TimerAssetRow[]) {
+  return assets.flatMap((asset) =>
+    Array.from({ length: Math.max(1, Math.min(asset.weight ?? 1, 10)) }, () => asset),
+  );
+}
+
+function assetKey(asset: TimerAssetRow) {
+  return `${asset.id}:${asset.url}`;
+}
+
 export function SponsorStrip({
   assets,
   className,
@@ -29,17 +39,23 @@ export function SponsorStrip({
   serverOffsetMs: number;
 }) {
   const enabledAssets = useMemo(() => assets.filter((asset) => asset.enabled), [assets]);
+  const weightedAssets = useMemo(() => weightedPool(enabledAssets), [enabledAssets]);
   const [index, setIndex] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now() + serverOffsetMs);
   const [randomAssets, setRandomAssets] = useState<TimerAssetRow[]>([]);
-  const [failedAssetId, setFailedAssetId] = useState<string | null>(null);
+  const [failedAssetKeys, setFailedAssetKeys] = useState<string[]>([]);
+
+  const availableAssets = useMemo(
+    () => weightedAssets.filter((asset) => !failedAssetKeys.includes(assetKey(asset))),
+    [failedAssetKeys, weightedAssets],
+  );
 
   useEffect(() => {
     queueMicrotask(() => {
       setIndex(0);
-      setRandomAssets(shuffle(enabledAssets));
+      setRandomAssets(shuffle(availableAssets));
     });
-  }, [enabledAssets, mode]);
+  }, [availableAssets, mode]);
 
   useEffect(() => {
     const tick = window.setInterval(() => {
@@ -50,27 +66,26 @@ export function SponsorStrip({
   }, [serverOffsetMs]);
 
   useEffect(() => {
-    if (enabledAssets.length <= 1) return;
+    if (availableAssets.length <= 1) return;
 
     const interval = window.setInterval(() => {
       setIndex((current) => {
         if (mode === "ordered") {
-          return (current + 1) % enabledAssets.length;
+          return (current + 1) % availableAssets.length;
         }
 
-        return (current + 1) % Math.max(enabledAssets.length, 1);
+        return (current + 1) % Math.max(availableAssets.length, 1);
       });
 
       if (mode === "random") {
         setRandomAssets((current) => {
-          const queue = current.length <= 1 ? shuffle(enabledAssets) : current;
-          return queue.slice(1);
+          return current.length <= 1 ? shuffle(availableAssets) : current.slice(1);
         });
       }
     }, Math.max(rotationSeconds, 3) * 1000);
 
     return () => window.clearInterval(interval);
-  }, [enabledAssets, mode, rotationSeconds]);
+  }, [availableAssets, mode, rotationSeconds]);
 
   const forcedAsset = useMemo(() => {
     if (!force?.active || !force.asset_id) return null;
@@ -79,16 +94,19 @@ export function SponsorStrip({
       if (nowMs >= untilMs) return null;
     }
 
-    return enabledAssets.find((asset) => asset.id === force.asset_id) ?? null;
-  }, [enabledAssets, force, nowMs]);
+    return enabledAssets.find(
+      (asset) => asset.id === force.asset_id && !failedAssetKeys.includes(assetKey(asset)),
+    ) ?? null;
+  }, [enabledAssets, failedAssetKeys, force, nowMs]);
 
   const activeAsset = forcedAsset
     ? forcedAsset
     : mode === "random"
-      ? randomAssets[0] ?? enabledAssets[index % Math.max(enabledAssets.length, 1)]
-      : enabledAssets[index % Math.max(enabledAssets.length, 1)];
+      ? randomAssets.find((asset) => availableAssets.some((candidate) => candidate.id === asset.id)) ??
+        availableAssets[index % Math.max(availableAssets.length, 1)]
+      : availableAssets[index % Math.max(availableAssets.length, 1)];
 
-  if (!activeAsset || failedAssetId === activeAsset.id) {
+  if (!activeAsset) {
     return null;
   }
 
@@ -102,7 +120,12 @@ export function SponsorStrip({
           <img
             alt={displayName ? `Sponsor: ${displayName}` : "Sponsor activo"}
             className="viewer-sponsor__image"
-            onError={() => setFailedAssetId(activeAsset.id)}
+            onError={() => {
+              const key = assetKey(activeAsset);
+              setFailedAssetKeys((current) =>
+                current.includes(key) ? current : [...current, key],
+              );
+            }}
             src={activeAsset.url}
           />
         </div>

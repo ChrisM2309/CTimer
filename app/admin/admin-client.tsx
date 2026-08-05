@@ -39,6 +39,7 @@ import {
   adminSetMessage,
   adminSetSponsorMode,
   adminUpdateSchedule,
+  adminUpdateTimerName,
   adminDeleteAsset,
   adminUpsertAsset,
   ensureAnonymousSession,
@@ -65,6 +66,7 @@ export function AdminClient({
   const [error, setError] = useState<string | null>(null);
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
   const [schedule, setSchedule] = useState<ScheduleValues | null>(null);
+  const [eventName, setEventName] = useState("");
   const [message, setMessage] = useState("");
   const [messageDurationSeconds, setMessageDurationSeconds] = useState(20);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -97,6 +99,7 @@ export function AdminClient({
   const sponsorSettingsDirty = timer
     ? sponsorMode !== timer.sponsor_mode || rotationSeconds !== timer.rotation_seconds
     : false;
+  const eventNameDirty = timer ? eventName.trim() !== timer.name : false;
   const viewerLink = useMemo(() => {
     if (typeof window === "undefined" || !code) return "";
     return `${window.location.origin}/join?code=${code}`;
@@ -112,6 +115,7 @@ export function AdminClient({
     if (!timer) return;
     queueMicrotask(() => {
       setMessage(bundle?.message?.text ?? "");
+      setEventName(timer.name);
       setSponsorMode(timer.sponsor_mode);
       setRotationSeconds(timer.rotation_seconds);
     });
@@ -207,6 +211,26 @@ export function AdminClient({
     }
   }
 
+  async function saveEventName() {
+    const nextName = eventName.trim();
+    if (!nextName) {
+      setError("El título del evento no puede estar vacío.");
+      return;
+    }
+
+    setBusy("event-name");
+    setError(null);
+
+    try {
+      await adminUpdateTimerName(code, token, nextName);
+      await refresh();
+    } catch (nextError) {
+      setError(safeErrorMessage(nextError));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function saveMessage(text: string | null, autoClearSeconds?: number | null) {
     if (messageClearTimerRef.current) {
       window.clearTimeout(messageClearTimerRef.current);
@@ -266,6 +290,7 @@ export function AdminClient({
         enabled: true,
         sortOrder: assets.length + 1,
         url,
+        weight: 1,
       });
       await refresh();
       setUploadFile(null);
@@ -347,7 +372,7 @@ export function AdminClient({
   } as const;
 
   return (
-    <main className="app-shell light-grid min-h-screen px-5 py-6 md:px-8 md:py-10">
+    <main className="app-shell master-shell light-grid min-h-screen px-5 py-6 md:px-8 md:py-10">
       <div className="mx-auto max-w-7xl">
         <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -394,8 +419,8 @@ export function AdminClient({
         ) : null}
 
         {timer ? (
-          <div className="grid gap-6">
-            <div className="grid gap-6">
+          <div className="master-layout grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)]">
+            <div className="master-primary grid gap-6">
               <Panel tone="dark" className="grid gap-5 p-4 sm:p-5">
                 <TimerFace
                   className="shadow-none"
@@ -514,7 +539,40 @@ export function AdminClient({
               </Panel>
             </div>
 
-            <div className="grid gap-6">
+            <div className="master-settings grid gap-6">
+              <Panel>
+                <SectionHeader
+                  eyebrow="Identidad"
+                  title="Información del evento"
+                  description="Cambia el título que verán el Master y todas las pantallas Viewer."
+                  action={
+                    eventNameDirty ? <PendingIndicator label="Título sin guardar" /> : null
+                  }
+                />
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <Field label="Título visible">
+                    <TextInput
+                      aria-describedby="event-name-help"
+                      maxLength={120}
+                      onChange={(event) => setEventName(event.target.value)}
+                      placeholder="Ej. Final nacional C3"
+                      value={eventName}
+                    />
+                  </Field>
+                  <Button
+                    disabled={!eventName.trim() || !eventNameDirty || busy === "event-name"}
+                    onClick={saveEventName}
+                    variant={eventNameDirty ? "primary" : "secondary"}
+                  >
+                    <Save size={16} aria-hidden />
+                    Guardar título
+                  </Button>
+                </div>
+                <p id="event-name-help" className="mt-3 text-xs leading-5 text-[var(--color-foreground-muted)]">
+                  El código público y el enlace del Viewer no cambian.
+                </p>
+              </Panel>
+
               <Panel>
                 <SectionHeader
                   eyebrow="Tiempo"
@@ -615,6 +673,9 @@ export function AdminClient({
                     />
                   </Field>
                 </div>
+                <p className="mt-3 max-w-2xl text-xs leading-5 text-[var(--color-foreground-muted)]">
+                  Peso 1 significa frecuencia normal; peso 3 hace que el sponsor aparezca aproximadamente tres veces más durante cada ciclo.
+                </p>
                 <Button
                   className="mt-4"
                   onClick={saveSponsorSettings}
@@ -769,12 +830,14 @@ function AssetEditor({
     sponsorName?: string | null;
     sponsorTier?: string | null;
     sortOrder: number;
+    weight: number;
     url: string;
   }) => void;
 }) {
   const [url, setUrl] = useState(asset.url);
   const [enabled, setEnabled] = useState(asset.enabled);
   const [sortOrder, setSortOrder] = useState(asset.sort_order);
+  const [weight, setWeight] = useState(asset.weight ?? 1);
   const [sponsorName, setSponsorName] = useState(asset.sponsor_name ?? "");
   const [sponsorTier, setSponsorTier] = useState(asset.sponsor_tier ?? "");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -782,6 +845,7 @@ function AssetEditor({
     url !== asset.url ||
     enabled !== asset.enabled ||
     sortOrder !== asset.sort_order ||
+    weight !== (asset.weight ?? 1) ||
     sponsorName !== (asset.sponsor_name ?? "") ||
     sponsorTier !== (asset.sponsor_tier ?? "");
 
@@ -790,10 +854,11 @@ function AssetEditor({
       setUrl(asset.url);
       setEnabled(asset.enabled);
       setSortOrder(asset.sort_order);
+      setWeight(asset.weight ?? 1);
       setSponsorName(asset.sponsor_name ?? "");
       setSponsorTier(asset.sponsor_tier ?? "");
     });
-  }, [asset.enabled, asset.sort_order, asset.sponsor_name, asset.sponsor_tier, asset.url]);
+  }, [asset.enabled, asset.sort_order, asset.sponsor_name, asset.sponsor_tier, asset.url, asset.weight]);
 
   return (
     <div className="grid gap-4 rounded-[24px] border border-black/10 bg-white/72 p-4 lg:grid-cols-[120px_1fr]">
@@ -820,7 +885,7 @@ function AssetEditor({
         <Field label="URL">
           <TextInput onChange={(event) => setUrl(event.target.value)} value={url} />
         </Field>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
           <Field label="Orden">
             <TextInput
               onChange={(event) =>
@@ -828,6 +893,17 @@ function AssetEditor({
               }
               type="number"
               value={sortOrder}
+            />
+          </Field>
+          <Field hint="1 = normal · 3 = triple" label="Peso">
+            <TextInput
+              max={10}
+              min={1}
+              onChange={(event) =>
+                setWeight(Math.min(10, Math.max(1, Number.parseInt(event.target.value, 10) || 1)))
+              }
+              type="number"
+              value={weight}
             />
           </Field>
           <label className="flex min-h-11 items-center gap-3 rounded-[18px] border border-black/10 bg-white px-4 py-3 text-xs font-black uppercase tracking-[.14em]">
@@ -847,6 +923,7 @@ function AssetEditor({
                 sortOrder,
                 sponsorName: sponsorName.trim() || null,
                 sponsorTier: sponsorTier.trim() || null,
+                weight,
                 url,
               })
             }

@@ -335,6 +335,21 @@ export async function adminUpdateSchedule(
   if (error) throw error;
 }
 
+export async function adminUpdateTimerName(
+  code: string,
+  adminToken: string,
+  name: string,
+) {
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase.rpc("admin_update_timer_name", {
+    p_code: normalizeCode(code),
+    p_admin_token: adminToken.trim(),
+    p_name: name.trim(),
+  });
+
+  if (error) throw error;
+}
+
 export async function adminSetMessage(
   code: string,
   adminToken: string,
@@ -377,6 +392,7 @@ export async function adminUpsertAsset(
     sponsorName?: string | null;
     sponsorTier?: string | null;
     sortOrder: number;
+    weight: number;
   },
 ) {
   const supabase = getSupabaseBrowserClient();
@@ -389,6 +405,7 @@ export async function adminUpsertAsset(
     p_sort_order: asset.sortOrder,
     p_sponsor_name: asset.sponsorName ?? null,
     p_sponsor_tier: asset.sponsorTier ?? null,
+    p_weight: asset.weight,
   });
 
   if (error) throw error;

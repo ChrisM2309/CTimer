@@ -35,6 +35,7 @@ export type TimerAssetRow = {
   timer_id: string;
   url: string;
   enabled: boolean;
+  weight: number;
   sort_order: number;
   sponsor_name?: string | null;
   sponsor_tier?: string | null;
