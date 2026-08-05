@@ -120,6 +120,8 @@ export function SponsorStrip({
           <img
             alt={displayName ? `Sponsor: ${displayName}` : "Sponsor activo"}
             className="viewer-sponsor__image"
+            decoding="async"
+            loading="eager"
             onError={() => {
               const key = assetKey(activeAsset);
               setFailedAssetKeys((current) =>
