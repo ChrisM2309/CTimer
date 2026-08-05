@@ -68,7 +68,7 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
     return (
       <main className="viewer-shell grid min-h-screen place-items-center px-5 py-8">
         <Panel tone="dark" className="w-full max-w-xl">
-          <p className="mb-3 text-xs font-black uppercase tracking-[.24em] text-[var(--color-warm)]">
+          <p className="mb-3 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-accent)]">
             Viewer
           </p>
           <h1 className="text-5xl font-black uppercase leading-none tracking-[-.06em]">
@@ -92,7 +92,7 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
               />
             </Field>
             {error ? (
-              <div className="rounded-[20px] border border-[rgba(197,23,46,.25)] bg-[rgba(197,23,46,.12)] p-4 text-sm font-semibold text-[var(--color-red)]">
+              <div className="rounded-[20px] border border-[rgb(180_35_59_/_30%)] bg-[var(--color-danger-soft)] p-4 text-sm font-semibold text-[var(--color-danger)]">
                 {error}
               </div>
             ) : null}
@@ -110,12 +110,12 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
     return (
       <main className="viewer-shell grid min-h-screen place-items-center px-5 py-8">
         <div className="text-center">
-          <Loader2 className="mx-auto animate-spin text-[var(--color-red)]" size={34} aria-hidden />
+          <Loader2 className="mx-auto animate-spin text-[var(--color-accent)]" size={34} aria-hidden />
           <p className="mt-4 text-sm font-black uppercase tracking-[.18em] text-white/60">
             Sincronizando sesión
           </p>
           {dataError ? (
-            <p className="mt-3 max-w-md text-sm leading-6 text-[var(--color-red)]">
+            <p className="mt-3 max-w-md text-sm leading-6 text-[var(--color-danger)]">
               {dataError}
             </p>
           ) : null}
@@ -133,7 +133,7 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
           <div className="flex flex-wrap items-center gap-3">
             <ConnectionStatus state={connectionState} />
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-black/35 px-3 py-2 text-[11px] font-black uppercase tracking-[.14em] text-white/68"
+              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[.06] px-3 py-2 text-[11px] font-bold uppercase tracking-[.14em] text-white/68"
               onClick={copyCode}
               type="button"
             >

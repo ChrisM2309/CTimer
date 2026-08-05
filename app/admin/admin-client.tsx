@@ -5,6 +5,7 @@ import {
   Ban,
   Copy,
   ExternalLink,
+  Trash2,
   Loader2,
   Pause,
   Play,
@@ -38,6 +39,7 @@ import {
   adminSetMessage,
   adminSetSponsorMode,
   adminUpdateSchedule,
+  adminDeleteAsset,
   adminUpsertAsset,
   ensureAnonymousSession,
   uploadSponsorImage,
@@ -130,8 +132,8 @@ export function AdminClient({
       margin: 1,
       scale: 6,
       color: {
-        dark: "#161616",
-        light: "#f3e7d9",
+        dark: "#0F203E",
+        light: "#F7F9FC",
       },
     }).then(setViewerQrDataUrl);
   }, [viewerLink]);
@@ -349,11 +351,11 @@ export function AdminClient({
       <div className="mx-auto max-w-7xl">
         <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[.24em] text-[var(--color-red)]">
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
               Master panel
             </p>
             <h1 className="mt-3 text-5xl font-black uppercase leading-[.95] tracking-normal md:text-7xl">
-              Control CTIMER
+              Control CTimer
             </h1>
           </div>
           {snapshot ? (
@@ -688,6 +690,18 @@ export function AdminClient({
                         busy={busy}
                         key={asset.id}
                         onForce={forceAsset}
+                        onDelete={async (assetId) => {
+                          setBusy(`delete-${assetId}`);
+                          setError(null);
+                          try {
+                            await adminDeleteAsset(code, token, assetId);
+                            await refresh();
+                          } catch (nextError) {
+                            setError(safeErrorMessage(nextError));
+                          } finally {
+                            setBusy(null);
+                          }
+                        }}
                         onSave={async (nextAsset) => {
                           setBusy(`asset-${asset.id}`);
                           setError(null);
@@ -714,7 +728,7 @@ export function AdminClient({
           </div>
         ) : timerId ? (
           <Panel>
-            <Loader2 className="animate-spin text-[var(--color-red)]" aria-hidden />
+            <Loader2 className="animate-spin text-[var(--color-accent)]" aria-hidden />
             <p className="mt-4 font-bold">Cargando sesión...</p>
           </Panel>
         ) : null}
@@ -742,14 +756,18 @@ function AssetEditor({
   asset,
   busy,
   onForce,
+  onDelete,
   onSave,
 }: {
   asset: TimerAssetRow;
   busy: string | null;
   onForce: (assetId: string, mode: "timed" | "hold") => void;
+  onDelete: (assetId: string) => void;
   onSave: (asset: {
     enabled: boolean;
     id: string;
+    sponsorName?: string | null;
+    sponsorTier?: string | null;
     sortOrder: number;
     url: string;
   }) => void;
@@ -757,18 +775,25 @@ function AssetEditor({
   const [url, setUrl] = useState(asset.url);
   const [enabled, setEnabled] = useState(asset.enabled);
   const [sortOrder, setSortOrder] = useState(asset.sort_order);
+  const [sponsorName, setSponsorName] = useState(asset.sponsor_name ?? "");
+  const [sponsorTier, setSponsorTier] = useState(asset.sponsor_tier ?? "");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const dirty =
     url !== asset.url ||
     enabled !== asset.enabled ||
-    sortOrder !== asset.sort_order;
+    sortOrder !== asset.sort_order ||
+    sponsorName !== (asset.sponsor_name ?? "") ||
+    sponsorTier !== (asset.sponsor_tier ?? "");
 
   useEffect(() => {
     queueMicrotask(() => {
       setUrl(asset.url);
       setEnabled(asset.enabled);
       setSortOrder(asset.sort_order);
+      setSponsorName(asset.sponsor_name ?? "");
+      setSponsorTier(asset.sponsor_tier ?? "");
     });
-  }, [asset.enabled, asset.sort_order, asset.url]);
+  }, [asset.enabled, asset.sort_order, asset.sponsor_name, asset.sponsor_tier, asset.url]);
 
   return (
     <div className="grid gap-4 rounded-[24px] border border-black/10 bg-white/72 p-4 lg:grid-cols-[120px_1fr]">
@@ -776,6 +801,22 @@ function AssetEditor({
         <img alt="Sponsor" className="max-h-20 object-contain" src={asset.url} />
       </div>
       <div className="grid gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Sponsor name">
+            <TextInput
+              onChange={(event) => setSponsorName(event.target.value)}
+              placeholder="Ej. ACME"
+              value={sponsorName}
+            />
+          </Field>
+          <Field label="Tier / nivel">
+            <TextInput
+              onChange={(event) => setSponsorTier(event.target.value)}
+              placeholder="Ej. Gold"
+              value={sponsorTier}
+            />
+          </Field>
+        </div>
         <Field label="URL">
           <TextInput onChange={(event) => setUrl(event.target.value)} value={url} />
         </Field>
@@ -800,7 +841,14 @@ function AssetEditor({
           <Button
             disabled={busy === `asset-${asset.id}`}
             onClick={() =>
-              onSave({ enabled, id: asset.id, sortOrder, url })
+              onSave({
+                enabled,
+                id: asset.id,
+                sortOrder,
+                sponsorName: sponsorName.trim() || null,
+                sponsorTier: sponsorTier.trim() || null,
+                url,
+              })
             }
             variant={dirty ? "primary" : "secondary"}
           >
@@ -808,7 +856,8 @@ function AssetEditor({
           </Button>
         </div>
         {dirty ? <PendingIndicator label="Asset sin guardar" /> : null}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
           <Button onClick={() => onForce(asset.id, "timed")} size="sm" variant="warm">
             Forzar timed
           </Button>
@@ -820,15 +869,37 @@ function AssetEditor({
             <Copy size={14} aria-hidden />
             Copiar URL
           </button>
+          </div>
+          <Button
+            disabled={busy === `delete-${asset.id}`}
+            onClick={() => setConfirmDeleteOpen(true)}
+            size="sm"
+            variant="danger"
+          >
+            <Trash2 size={16} aria-hidden />
+            Eliminar
+          </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        confirmLabel="Eliminar sponsor"
+        description="Esto quitará el sponsor de todas las pantallas. (No borra el archivo en Storage). ¿Confirmar?"
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={() => {
+          setConfirmDeleteOpen(false);
+          onDelete(asset.id);
+        }}
+        open={confirmDeleteOpen}
+        title="Eliminar sponsor"
+      />
     </div>
   );
 }
 
 function PendingIndicator({ label }: { label: string }) {
   return (
-    <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[rgba(197,23,46,.28)] bg-[rgba(197,23,46,.08)] px-3 py-2 text-[11px] font-black uppercase tracking-[.14em] text-[var(--color-red)]">
+    <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[rgb(51_190_172_/_35%)] bg-[var(--color-accent-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[.14em] text-[var(--color-primary)]">
       * {label}
     </span>
   );
@@ -836,7 +907,7 @@ function PendingIndicator({ label }: { label: string }) {
 
 function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="mt-5 rounded-[20px] border border-[rgba(197,23,46,.25)] bg-[rgba(197,23,46,.08)] p-4 text-sm font-semibold text-[var(--color-red)]">
+    <div className="mt-5 rounded-[20px] border border-[rgb(180_35_59_/_25%)] bg-[var(--color-danger-soft)] p-4 text-sm font-semibold text-[var(--color-danger)]">
       {message}
     </div>
   );

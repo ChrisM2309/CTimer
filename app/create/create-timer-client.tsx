@@ -40,8 +40,8 @@ export function CreateTimerClient() {
       margin: 1,
       scale: 7,
       color: {
-        dark: "#161616",
-        light: "#f3e7d9",
+        dark: "#0F203E",
+        light: "#F7F9FC",
       },
     }).then(setQrDataUrl);
   }, [links?.join]);
@@ -80,11 +80,11 @@ export function CreateTimerClient() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[.24em] text-[var(--color-red)]">
+            <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
               Crear sesión
             </p>
             <h1 className="mt-3 text-5xl font-black uppercase leading-[.95] tracking-normal md:text-7xl">
-              Nuevo CTIMER
+              Nuevo CTimer
             </h1>
           </div>
           <ActionLink href="/" variant="secondary">
@@ -142,7 +142,7 @@ export function CreateTimerClient() {
               </div>
 
               {error ? (
-                <div className="rounded-[20px] border border-[rgba(197,23,46,.25)] bg-[rgba(197,23,46,.08)] p-4 text-sm font-semibold text-[var(--color-red)]">
+                <div className="rounded-[20px] border border-[rgb(180_35_59_/_25%)] bg-[var(--color-danger-soft)] p-4 text-sm font-semibold text-[var(--color-danger)]">
                   {error}
                 </div>
               ) : null}
@@ -164,8 +164,8 @@ export function CreateTimerClient() {
 
             {result && links ? (
               <div className="grid gap-4">
-                <div className="rounded-[28px] border border-[rgba(201,176,138,.36)] bg-[rgba(201,176,138,.1)] p-5">
-                  <p className="text-[11px] font-black uppercase tracking-[.18em] text-[var(--color-warm)]">
+                <div className="rounded-[28px] border border-[rgb(51_190_172_/_30%)] bg-[var(--color-accent-soft)] p-5 text-[var(--color-foreground)]">
+                  <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[var(--color-primary)]">
                     Código viewer
                   </p>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
@@ -187,7 +187,7 @@ export function CreateTimerClient() {
                       src={qrDataUrl}
                     />
                     <div>
-                      <QrCode className="mb-3 text-[var(--color-red)]" aria-hidden />
+                      <QrCode className="mb-3 text-[var(--color-accent)]" aria-hidden />
                       <p className="text-sm font-semibold leading-6 text-white/66">
                         Este QR abre directamente el viewer con el código de sesión.
                       </p>
@@ -198,7 +198,7 @@ export function CreateTimerClient() {
                 <LinkRow label="Viewer link" onCopy={copy} value={links.join} />
                 <LinkRow label="Admin link" onCopy={copy} value={links.admin} />
                 <div className="rounded-[24px] border border-white/10 bg-white/[.04] p-4 text-sm leading-6 text-white/62">
-                  <ShieldCheck className="mb-2 text-[var(--color-warm)]" aria-hidden />
+                  <ShieldCheck className="mb-2 text-[var(--color-accent)]" aria-hidden />
                   El token no se guarda en texto plano. La base solo conserva su hash.
                 </div>
               </div>

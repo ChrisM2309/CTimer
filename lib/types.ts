@@ -3,6 +3,7 @@ export type EffectiveTimerState = "scheduled" | "running" | "paused" | "ended";
 export type SponsorMode = "ordered" | "random";
 export type ForceMode = "timed" | "hold";
 export type AdminAction = "start" | "pause" | "resume" | "reset" | "end";
+export type TimerMemberRole = "viewer" | "admin";
 
 export type TimerRow = {
   id: string;
@@ -33,6 +34,9 @@ export type TimerAssetRow = {
   url: string;
   enabled: boolean;
   sort_order: number;
+  sponsor_name?: string | null;
+  sponsor_tier?: string | null;
+  updated_at?: string;
   created_at: string;
 };
 
@@ -50,6 +54,11 @@ export type TimerBundle = {
   message: TimerMessageRow | null;
   assets: TimerAssetRow[];
   force: TimerAssetForceRow | null;
+};
+
+export type MyTimerRow = TimerRow & {
+  member_role: TimerMemberRole;
+  member_joined_at: string;
 };
 
 export type ScheduleValues = {

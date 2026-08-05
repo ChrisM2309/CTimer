@@ -958,3 +958,180 @@ using (
 -- Force PostgREST/Supabase API to reload function signatures after running
 -- this file in SQL Editor, so /rest/v1/rpc/* sees newly created RPCs.
 notify pgrst, 'reload schema';
+
+-- =========================================================
+-- CTIMER vNext minimal additions (accounts + My Timers + sponsors metadata)
+-- Keep existing locked timer model + realtime/offline behavior.
+-- =========================================================
+
+-- Sponsor metadata fields (keeps url/image behavior intact).
+alter table public.timer_assets
+  add column if not exists sponsor_name text null;
+
+alter table public.timer_assets
+  add column if not exists sponsor_tier text null;
+
+alter table public.timer_assets
+  add column if not exists updated_at timestamptz not null default now();
+
+drop trigger if exists trg_timer_assets_updated_at on public.timer_assets;
+create trigger trg_timer_assets_updated_at
+before update on public.timer_assets
+for each row execute function public.set_updated_at();
+
+-- Extend upsert RPC to support sponsor metadata (backwards compatible).
+create or replace function public.admin_upsert_asset(
+  p_code text,
+  p_admin_token text,
+  p_asset_id uuid default null,
+  p_url text default null,
+  p_enabled boolean default true,
+  p_sort_order int default 0,
+  p_sponsor_name text default null,
+  p_sponsor_tier text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_timer_id uuid;
+  v_asset_id uuid;
+begin
+  select id into v_timer_id
+  from public.timers
+  where code = upper(trim(p_code))
+  limit 1;
+
+  if v_timer_id is null then
+    raise exception 'Invalid code';
+  end if;
+
+  if not public.verify_admin_token(v_timer_id, p_admin_token) then
+    raise exception 'Invalid admin token';
+  end if;
+
+  if p_asset_id is null then
+    if p_url is null or length(trim(p_url)) = 0 then
+      raise exception 'url required';
+    end if;
+
+    insert into public.timer_assets(timer_id, url, enabled, sort_order, sponsor_name, sponsor_tier)
+    values (
+      v_timer_id,
+      trim(p_url),
+      coalesce(p_enabled, true),
+      coalesce(p_sort_order, 0),
+      nullif(trim(coalesce(p_sponsor_name, '')), ''),
+      nullif(trim(coalesce(p_sponsor_tier, '')), '')
+    )
+    returning id into v_asset_id;
+
+    return v_asset_id;
+  end if;
+
+  update public.timer_assets
+  set url = coalesce(nullif(trim(coalesce(p_url, '')), ''), url),
+      enabled = coalesce(p_enabled, enabled),
+      sort_order = coalesce(p_sort_order, sort_order),
+      sponsor_name = coalesce(nullif(trim(coalesce(p_sponsor_name, '')), ''), sponsor_name),
+      sponsor_tier = coalesce(nullif(trim(coalesce(p_sponsor_tier, '')), ''), sponsor_tier)
+  where id = p_asset_id
+    and timer_id = v_timer_id
+  returning id into v_asset_id;
+
+  if v_asset_id is null then
+    raise exception 'Invalid asset';
+  end if;
+
+  return v_asset_id;
+end $$;
+
+-- Delete sponsor asset row (does not delete Storage object).
+create or replace function public.admin_delete_asset(
+  p_code text,
+  p_admin_token text,
+  p_asset_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_timer_id uuid;
+begin
+  select id into v_timer_id
+  from public.timers
+  where code = upper(trim(p_code))
+  limit 1;
+
+  if v_timer_id is null then
+    raise exception 'Invalid code';
+  end if;
+
+  if not public.verify_admin_token(v_timer_id, p_admin_token) then
+    raise exception 'Invalid admin token';
+  end if;
+
+  delete from public.timer_assets
+  where id = p_asset_id
+    and timer_id = v_timer_id;
+end $$;
+
+-- List timers for the currently authenticated user (recents + owned).
+-- timer_members stays locked down via RLS; clients must use this RPC.
+create or replace function public.list_my_timers(
+  p_limit int default 12,
+  p_offset int default 0
+)
+returns table (
+  id uuid,
+  code text,
+  name text,
+  timezone text,
+  start_at timestamptz,
+  end_at timestamptz,
+  duration_seconds int,
+  status public.timer_status,
+  paused_remaining_seconds int,
+  paused_at timestamptz,
+  sponsor_mode public.sponsor_mode,
+  rotation_seconds int,
+  created_at timestamptz,
+  updated_at timestamptz,
+  member_role public.timer_member_role,
+  member_joined_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    t.id,
+    t.code,
+    t.name,
+    t.timezone,
+    t.start_at,
+    t.end_at,
+    t.duration_seconds,
+    t.status,
+    t.paused_remaining_seconds,
+    t.paused_at,
+    t.sponsor_mode,
+    t.rotation_seconds,
+    t.created_at,
+    t.updated_at,
+    m.role as member_role,
+    m.joined_at as member_joined_at
+  from public.timer_members m
+  join public.timers t on t.id = m.timer_id
+  where auth.uid() is not null
+    and m.user_id = auth.uid()
+  order by m.joined_at desc
+  limit greatest(coalesce(p_limit, 12), 1)
+  offset greatest(coalesce(p_offset, 0), 0);
+$$;
+
+notify pgrst, 'reload schema';

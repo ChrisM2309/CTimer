@@ -90,6 +90,9 @@ export function SponsorStrip({
     return null;
   }
 
+  const displayName = (activeAsset.sponsor_name ?? "").trim();
+  const displayTier = (activeAsset.sponsor_tier ?? "").trim();
+
   return (
     <div
       className={
@@ -97,16 +100,33 @@ export function SponsorStrip({
         "mx-auto mb-4 w-full max-w-6xl rounded-[26px] border border-white/10 bg-black/55 px-4 py-4 backdrop-blur sm:mb-5 sm:px-6 sm:py-5"
       }
     >
-      <div className="flex items-center justify-center gap-3">
-        <img
-          alt="Sponsor activo"
-          className="h-28 max-w-full object-contain sm:h-40 lg:h-48"
-          src={activeAsset.url}
-        />
-        {forcedAsset ? (
-          <span className="rounded-full border border-[rgba(201,176,138,.42)] px-3 py-1 text-[10px] font-black uppercase tracking-[.16em] text-[var(--color-warm)]">
-            Force
-          </span>
+      <div className="grid gap-2">
+        <div className="flex items-center justify-center gap-3">
+          <img
+            alt={displayName ? `Sponsor: ${displayName}` : "Sponsor activo"}
+            className="h-28 max-w-full object-contain sm:h-40 lg:h-48"
+            src={activeAsset.url}
+          />
+          {forcedAsset ? (
+            <span className="rounded-full border border-[rgb(51_190_172_/_42%)] px-3 py-1 text-[10px] font-bold uppercase tracking-[.16em] text-[var(--color-accent)]">
+              Force
+            </span>
+          ) : null}
+        </div>
+
+        {displayName || displayTier ? (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+            {displayTier ? (
+              <span className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--color-accent)]">
+                {displayTier}
+              </span>
+            ) : null}
+            {displayName ? (
+              <span className="text-xs font-black uppercase tracking-[.14em] text-white/70">
+                {displayName}
+              </span>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>

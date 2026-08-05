@@ -63,7 +63,7 @@ export function TimerFace({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[var(--radius-xl)] border border-white/10 bg-[var(--color-graphite)] text-[var(--color-light)] shadow-[var(--shadow-strong)]",
+        "relative overflow-hidden rounded-[var(--radius-xl)] border border-white/10 bg-[var(--color-surface-dark)] text-[var(--color-foreground-on-dark)] shadow-[var(--shadow-strong)]",
         variant === "viewer" ? "p-7 sm:p-10" : "p-5 sm:p-6",
         className,
       )}
@@ -79,7 +79,7 @@ export function TimerFace({
         >
           <div>
             <p className="text-[11px] font-black uppercase tracking-[.24em] text-white/55">
-              CTIMER · {timer.code}
+              CTimer · {timer.code}
             </p>
             <h1
               className={cn(
@@ -103,7 +103,7 @@ export function TimerFace({
 
         <div
           className={cn(
-            "font-black leading-none tracking-[-.05em] text-[var(--color-light)] tabular-nums",
+            "font-extrabold leading-none tracking-[-.05em] text-[var(--color-foreground-on-dark)] tabular-nums",
             variant === "viewer"
               ? viewerHasSponsors
                 ? preciseDisplay
@@ -134,7 +134,7 @@ export function TimerFace({
         {snapshot.state === "scheduled" ? (
           <p
             className={cn(
-              "font-bold uppercase tracking-[.14em] text-[var(--color-warm)]",
+              "font-bold uppercase tracking-[.14em] text-[var(--color-accent)]",
               variant === "admin" ? "mt-3 text-xs" : "mt-4 text-sm",
             )}
           >
@@ -149,7 +149,7 @@ export function TimerFace({
           )}
         >
           <div
-            className="h-full rounded-full bg-[var(--color-red)] transition-[width] duration-300"
+            className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300"
             style={{ width: `${snapshot.progress * 100}%` }}
           />
         </div>

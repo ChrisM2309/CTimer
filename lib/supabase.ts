@@ -10,6 +10,7 @@ import type {
   AdminAction,
   CreateTimerResult,
   ForceMode,
+  MyTimerRow,
   ScheduleValues,
   SponsorMode,
   TimerAssetRow,
@@ -70,6 +71,51 @@ export async function ensureAnonymousSession() {
   }
 
   return data.session;
+}
+
+export async function getCurrentSession() {
+  const supabase = getSupabaseBrowserClient();
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+  if (error) throw error;
+  return session;
+}
+
+export async function getCurrentUser() {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return data.user;
+}
+
+export async function attachEmailToCurrentUser(email: string) {
+  const supabase = getSupabaseBrowserClient();
+  const cleaned = email.trim();
+  if (!cleaned) throw new Error("Ingresa un email válido.");
+
+  const { data, error } = await supabase.auth.updateUser({ email: cleaned });
+  if (error) throw error;
+  return data.user;
+}
+
+export async function signInWithEmailOtp(email: string, options?: { redirectTo?: string }) {
+  const supabase = getSupabaseBrowserClient();
+  const cleaned = email.trim();
+  if (!cleaned) throw new Error("Ingresa un email válido.");
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email: cleaned,
+    options: options?.redirectTo ? { emailRedirectTo: options.redirectTo } : undefined,
+  });
+  if (error) throw error;
+}
+
+export async function signOut() {
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }
 
 export async function getServerTimeOffset() {
@@ -241,6 +287,8 @@ export async function adminUpsertAsset(
     id?: string | null;
     url: string;
     enabled: boolean;
+    sponsorName?: string | null;
+    sponsorTier?: string | null;
     sortOrder: number;
   },
 ) {
@@ -252,10 +300,33 @@ export async function adminUpsertAsset(
     p_url: asset.url,
     p_enabled: asset.enabled,
     p_sort_order: asset.sortOrder,
+    p_sponsor_name: asset.sponsorName ?? null,
+    p_sponsor_tier: asset.sponsorTier ?? null,
   });
 
   if (error) throw error;
   return data as string;
+}
+
+export async function adminDeleteAsset(code: string, adminToken: string, assetId: string) {
+  const supabase = getSupabaseBrowserClient();
+  const { error } = await supabase.rpc("admin_delete_asset", {
+    p_code: normalizeCode(code),
+    p_admin_token: adminToken.trim(),
+    p_asset_id: assetId,
+  });
+
+  if (error) throw error;
+}
+
+export async function listMyTimers(payload?: { limit?: number; offset?: number }) {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.rpc("list_my_timers", {
+    p_limit: payload?.limit ?? 12,
+    p_offset: payload?.offset ?? 0,
+  });
+  if (error) throw error;
+  return (data ?? []) as MyTimerRow[];
 }
 
 export async function adminForceAsset(

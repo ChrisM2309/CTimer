@@ -1,4 +1,4 @@
-# CTIMER MVP
+# CTimer · Una herramienta de C3
 
 Temporizador sincronizado para eventos multi-salón con Next.js App Router y Supabase.
 

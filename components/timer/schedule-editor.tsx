@@ -113,7 +113,7 @@ export function ScheduleEditor({
     <div className="rounded-[28px] border border-black/10 bg-white p-4 shadow-[0_12px_30px_rgba(0,0,0,.05)] sm:p-5">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[.2em] text-[var(--color-red)]">
+          <p className="text-[11px] font-bold uppercase tracking-[.18em] text-[var(--color-primary)]">
             Programacion
           </p>
           <p className="mt-1 text-sm leading-6 text-black/62">
@@ -121,7 +121,7 @@ export function ScheduleEditor({
           </p>
         </div>
         {showRunningWarning ? (
-          <span className="rounded-full border border-[rgba(197,23,46,.28)] bg-[rgba(197,23,46,.1)] px-3 py-1 text-[11px] font-black uppercase tracking-[.14em] text-[var(--color-red)]">
+          <span className="rounded-full border border-[rgb(180_35_59_/_30%)] bg-[var(--color-danger-soft)] px-3 py-1 text-[11px] font-bold uppercase tracking-[.14em] text-[var(--color-danger)]">
             Afecta todas las pantallas
           </span>
         ) : null}
@@ -177,7 +177,7 @@ export function ScheduleEditor({
       <div className="mt-5 flex flex-wrap gap-2 border-t border-black/8 pt-4">
         {[600, 1200, 1800, 3600, 5400].map((seconds) => (
           <button
-            className="rounded-[14px] border border-[rgba(201,176,138,.68)] bg-[rgba(243,231,217,.72)] px-3 py-2 text-[11px] font-black uppercase tracking-[.12em] text-[var(--color-graphite)] transition hover:-translate-y-px hover:border-[var(--color-graphite)] disabled:opacity-50"
+            className="rounded-[14px] border border-[rgb(51_190_172_/_45%)] bg-[var(--color-accent-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[.12em] text-[var(--color-foreground)] transition hover:-translate-y-px hover:border-[var(--color-primary)] disabled:opacity-50"
             disabled={disabled}
             key={seconds}
             onClick={() => quickDuration(seconds)}
