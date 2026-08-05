@@ -501,7 +501,7 @@ export function AdminClient({
         ) : null}
 
         {timer ? (
-          <div className="master-layout grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,.9fr)]">
+          <div className="master-layout grid gap-6">
             <div className="master-primary grid gap-6">
               <Panel tone="dark" className="grid gap-5 p-4 sm:p-5">
                 <TimerFace
