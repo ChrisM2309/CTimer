@@ -2,9 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   Ban,
   Copy,
   ExternalLink,
+  ImageOff,
+  Link2,
   Trash2,
   Loader2,
   Pause,
@@ -47,7 +51,7 @@ import {
 } from "@/lib/supabase";
 import { createDefaultSchedule } from "@/lib/schedule";
 import { deriveTimerSnapshot, getServerNowMs, stateTone } from "@/lib/timer";
-import { normalizeCode, safeErrorMessage } from "@/lib/utils";
+import { cn, normalizeCode, safeErrorMessage } from "@/lib/utils";
 
 type ConfirmKind = "start" | "reset" | "end" | null;
 
@@ -70,6 +74,7 @@ export function AdminClient({
   const [message, setMessage] = useState("");
   const [messageDurationSeconds, setMessageDurationSeconds] = useState(20);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [newAssetUrl, setNewAssetUrl] = useState("");
   const [forceSeconds, setForceSeconds] = useState(20);
   const [sponsorMode, setSponsorMode] = useState<SponsorMode>("ordered");
   const [rotationSeconds, setRotationSeconds] = useState(10);
@@ -81,7 +86,11 @@ export function AdminClient({
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const timer = bundle?.timer ?? null;
-  const assets = bundle?.assets ?? [];
+  const assets = bundle?.assets;
+  const orderedAssets = useMemo(
+    () => [...(assets ?? [])].sort((left, right) => left.sort_order - right.sort_order),
+    [assets],
+  );
   const defaultSchedule = useMemo(() => createDefaultSchedule(), []);
   const scheduleInitial = useMemo<ScheduleValues>(() => {
     if (!timer) return defaultSchedule;
@@ -288,7 +297,7 @@ export function AdminClient({
       const url = await uploadSponsorImage(timerId, uploadFile);
       await adminUpsertAsset(code, token, {
         enabled: true,
-        sortOrder: assets.length + 1,
+        sortOrder: orderedAssets.length + 1,
         url,
         weight: 1,
       });
@@ -299,6 +308,79 @@ export function AdminClient({
       }
     } catch (nextError) {
       setError(safeErrorMessage(nextError));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function addAssetFromUrl() {
+    const url = newAssetUrl.trim();
+    if (!url) return;
+
+    try {
+      const parsed = new URL(url);
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        throw new Error("La URL debe comenzar con http:// o https://.");
+      }
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "La URL no es válida.");
+      return;
+    }
+
+    setBusy("asset-url");
+    setError(null);
+
+    try {
+      await adminUpsertAsset(code, token, {
+        enabled: true,
+        sortOrder: orderedAssets.length + 1,
+        url,
+        weight: 1,
+      });
+      await refresh();
+      setNewAssetUrl("");
+    } catch (nextError) {
+      setError(safeErrorMessage(nextError));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function moveAsset(assetId: string, direction: "up" | "down") {
+    const currentIndex = orderedAssets.findIndex((asset) => asset.id === assetId);
+    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const current = orderedAssets[currentIndex];
+    const next = orderedAssets[nextIndex];
+    if (!current || !next) return;
+
+    setBusy(`move-${assetId}`);
+    setError(null);
+
+    try {
+      await Promise.all([
+        adminUpsertAsset(code, token, {
+          enabled: current.enabled,
+          id: current.id,
+          sortOrder: next.sort_order,
+          sponsorName: current.sponsor_name,
+          sponsorTier: current.sponsor_tier,
+          url: current.url,
+          weight: current.weight ?? 1,
+        }),
+        adminUpsertAsset(code, token, {
+          enabled: next.enabled,
+          id: next.id,
+          sortOrder: current.sort_order,
+          sponsorName: next.sponsor_name,
+          sponsorTier: next.sponsor_tier,
+          url: next.url,
+          weight: next.weight ?? 1,
+        }),
+      ]);
+      await refresh();
+    } catch (nextError) {
+      setError(safeErrorMessage(nextError));
+    } finally {
       setBusy(null);
     }
   }
@@ -722,6 +804,35 @@ export function AdminClient({
                   </div>
                 </div>
 
+                <div className="mt-4 grid gap-3 rounded-[28px] border border-[rgb(32_82_152_/_18%)] bg-[rgb(32_82_152_/_5%)] p-4">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[.18em] text-[var(--color-primary)]">
+                      Agregar desde URL
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--color-foreground-muted)]">
+                      Útil para logos alojados en un CDN o sitio externo. Después puedes editar nombre, orden y peso.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                    <Field label="URL de imagen">
+                      <TextInput
+                        onChange={(event) => setNewAssetUrl(event.target.value)}
+                        placeholder="https://ejemplo.com/logo.svg"
+                        type="url"
+                        value={newAssetUrl}
+                      />
+                    </Field>
+                    <Button
+                      disabled={!newAssetUrl.trim() || busy === "asset-url"}
+                      onClick={addAssetFromUrl}
+                      variant="secondary"
+                    >
+                      <Link2 size={16} aria-hidden />
+                      Agregar URL
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="mt-6 grid gap-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <Field className="max-w-52" label="Force timed">
@@ -744,13 +855,17 @@ export function AdminClient({
                     </Button>
                   </div>
 
-                  {assets.length ? (
-                    assets.map((asset) => (
+                  {orderedAssets.length ? (
+                    orderedAssets.map((asset, assetIndex) => (
                       <AssetEditor
                         asset={asset}
+                        forced={Boolean(bundle?.force?.active && bundle.force.asset_id === asset.id)}
                         busy={busy}
                         key={asset.id}
+                        onMove={moveAsset}
                         onForce={forceAsset}
+                        position={assetIndex}
+                        total={orderedAssets.length}
                         onDelete={async (assetId) => {
                           setBusy(`delete-${assetId}`);
                           setError(null);
@@ -816,14 +931,22 @@ export function AdminClient({
 function AssetEditor({
   asset,
   busy,
+  forced,
+  onMove,
   onForce,
   onDelete,
   onSave,
+  position,
+  total,
 }: {
   asset: TimerAssetRow;
   busy: string | null;
+  forced: boolean;
+  onMove: (assetId: string, direction: "up" | "down") => void;
   onForce: (assetId: string, mode: "timed" | "hold") => void;
   onDelete: (assetId: string) => void;
+  position: number;
+  total: number;
   onSave: (asset: {
     enabled: boolean;
     id: string;
@@ -840,6 +963,7 @@ function AssetEditor({
   const [weight, setWeight] = useState(asset.weight ?? 1);
   const [sponsorName, setSponsorName] = useState(asset.sponsor_name ?? "");
   const [sponsorTier, setSponsorTier] = useState(asset.sponsor_tier ?? "");
+  const [previewError, setPreviewError] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const dirty =
     url !== asset.url ||
@@ -857,13 +981,39 @@ function AssetEditor({
       setWeight(asset.weight ?? 1);
       setSponsorName(asset.sponsor_name ?? "");
       setSponsorTier(asset.sponsor_tier ?? "");
+      setPreviewError(false);
     });
   }, [asset.enabled, asset.sort_order, asset.sponsor_name, asset.sponsor_tier, asset.url, asset.weight]);
 
   return (
-    <div className="grid gap-4 rounded-[24px] border border-black/10 bg-white/72 p-4 lg:grid-cols-[120px_1fr]">
-      <div className="grid place-items-center rounded-[18px] bg-black/[.04] p-3">
-        <img alt="Sponsor" className="max-h-20 object-contain" src={asset.url} />
+    <div className="grid gap-4 rounded-[24px] border border-black/10 bg-white/72 p-4 lg:grid-cols-[160px_1fr]">
+      <div className="relative grid min-h-32 place-items-center overflow-hidden rounded-[18px] bg-[var(--color-surface-dark)] p-3">
+        {previewError ? (
+          <div className="grid justify-items-center gap-2 text-center text-xs font-bold uppercase tracking-[.12em] text-white/60">
+            <ImageOff size={24} aria-hidden />
+            Preview no disponible
+          </div>
+        ) : (
+          <img
+            alt={sponsorName ? `Preview de ${sponsorName}` : "Preview del sponsor"}
+            className="max-h-32 max-w-full object-contain"
+            onError={() => setPreviewError(true)}
+            src={url}
+          />
+        )}
+        <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+          <span className={cn(
+            "rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-[.12em]",
+            enabled ? "bg-[var(--color-accent)] text-[var(--color-surface-dark)]" : "bg-white/15 text-white/65",
+          )}>
+            {enabled ? "Activo" : "Oculto"}
+          </span>
+          {forced ? (
+            <span className="rounded-full bg-[var(--color-primary)] px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-white">
+              Prioridad actual
+            </span>
+          ) : null}
+        </div>
       </div>
       <div className="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -883,7 +1033,13 @@ function AssetEditor({
           </Field>
         </div>
         <Field label="URL">
-          <TextInput onChange={(event) => setUrl(event.target.value)} value={url} />
+           <TextInput
+             onChange={(event) => {
+               setPreviewError(false);
+               setUrl(event.target.value);
+             }}
+             value={url}
+           />
         </Field>
         <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
           <Field label="Orden">
@@ -931,6 +1087,37 @@ function AssetEditor({
           >
             {dirty ? "Guardar *" : "Guardar"}
           </Button>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              aria-label="Subir sponsor"
+              disabled={position === 0 || Boolean(busy)}
+              onClick={() => onMove(asset.id, "up")}
+              size="sm"
+              title="Subir sponsor"
+              type="button"
+              variant="ghost"
+            >
+              <ArrowUp size={15} aria-hidden />
+              Subir
+            </Button>
+            <Button
+              aria-label="Bajar sponsor"
+              disabled={position === total - 1 || Boolean(busy)}
+              onClick={() => onMove(asset.id, "down")}
+              size="sm"
+              title="Bajar sponsor"
+              type="button"
+              variant="ghost"
+            >
+              <ArrowDown size={15} aria-hidden />
+              Bajar
+            </Button>
+          </div>
+          <p className="text-xs font-semibold text-[var(--color-foreground-muted)]">
+            Posición {position + 1} de {total} · Peso {weight}
+          </p>
         </div>
         {dirty ? <PendingIndicator label="Asset sin guardar" /> : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
