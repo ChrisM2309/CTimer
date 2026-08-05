@@ -109,7 +109,7 @@ export function getSupabaseBrowserClient() {
     browserClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: false,
         persistSession: true,
         storage: createSessionAwareStorage(),
       },
@@ -197,48 +197,6 @@ export async function signInWithPassword(email: string, password: string) {
   });
   if (error) throw error;
   return data;
-}
-
-export async function sendPasswordReset(email: string, redirectTo?: string) {
-  const cleaned = email.trim().toLowerCase();
-  if (!cleaned) throw new Error("Ingresa un email válido.");
-
-  const { error } = await getSupabaseBrowserClient().auth.resetPasswordForEmail(cleaned, {
-    redirectTo,
-  });
-  if (error) throw error;
-}
-
-export async function updatePassword(password: string) {
-  if (password.length < 8) {
-    throw new Error("La contraseña debe tener al menos 8 caracteres.");
-  }
-
-  const { data, error } = await getSupabaseBrowserClient().auth.updateUser({ password });
-  if (error) throw error;
-  return data.user;
-}
-
-export async function attachEmailToCurrentUser(email: string) {
-  const supabase = getSupabaseBrowserClient();
-  const cleaned = email.trim();
-  if (!cleaned) throw new Error("Ingresa un email válido.");
-
-  const { data, error } = await supabase.auth.updateUser({ email: cleaned });
-  if (error) throw error;
-  return data.user;
-}
-
-export async function signInWithEmailOtp(email: string, options?: { redirectTo?: string }) {
-  const supabase = getSupabaseBrowserClient();
-  const cleaned = email.trim();
-  if (!cleaned) throw new Error("Ingresa un email válido.");
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email: cleaned,
-    options: options?.redirectTo ? { emailRedirectTo: options.redirectTo } : undefined,
-  });
-  if (error) throw error;
 }
 
 export async function signOut() {

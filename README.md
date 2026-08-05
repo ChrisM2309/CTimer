@@ -18,7 +18,9 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-En Supabase, habilita **Anonymous Sign-ins** en Auth.
+En Supabase, habilita **Anonymous Sign-ins** en Auth y desactiva **Confirm email**
+para que el registro con email y contraseña cree la sesión inmediatamente, sin
+consumir correos de confirmación.
 
 ## Base de datos
 

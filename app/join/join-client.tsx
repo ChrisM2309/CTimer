@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Copy, Loader2, Maximize2 } from "lucide-react";
+import { Copy, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput } from "@/components/ui/field";
 import { Panel } from "@/components/ui/panel";
@@ -18,6 +18,7 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
   const [timerId, setTimerId] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const autoJoinedRef = useRef(false);
   const { bundle, connectionState, error: dataError, serverOffsetMs } =
     useTimerData(timerId);
@@ -56,8 +57,28 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
     }
   }, [handleJoin, initialCode]);
 
-  function requestFullscreen() {
-    document.documentElement.requestFullscreen?.();
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    handleFullscreenChange();
+
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen?.();
+        return;
+      }
+
+      await document.documentElement.requestFullscreen?.();
+    } catch {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
   }
 
   function copyCode() {
@@ -128,12 +149,13 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
     <main className="viewer-shell flex min-h-screen flex-col">
       <MessageOverlay text={bundle.message?.text} />
 
-      <div className="flex flex-1 flex-col px-4 py-4 sm:px-6 sm:py-6">
-        <header className="relative z-20 mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <ConnectionStatus state={connectionState} />
+      <div className="viewer-frame">
+        <header className="viewer-toolbar relative z-20">
+          <div className="viewer-toolbar__meta">
+            <ConnectionStatus className="viewer-connection-status" state={connectionState} />
             <button
-              className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[.06] px-3 py-2 text-[11px] font-bold uppercase tracking-[.14em] text-white/68"
+              aria-label={`Copiar código público ${bundle.timer.code}`}
+              className="viewer-code-button"
               onClick={copyCode}
               type="button"
             >
@@ -141,9 +163,16 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
               Código {bundle.timer.code}
             </button>
           </div>
-          <Button onClick={requestFullscreen} size="sm" variant="ghost">
-            <Maximize2 size={15} aria-hidden />
-            Fullscreen
+          <Button
+            aria-label={isFullscreen ? "Salir de pantalla completa" : "Entrar en pantalla completa"}
+            className="viewer-fullscreen-button"
+            onClick={toggleFullscreen}
+            size="sm"
+            title={isFullscreen ? "Salir de pantalla completa" : "Entrar en pantalla completa"}
+            variant="ghost"
+          >
+            {isFullscreen ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
+            {isFullscreen ? "Salir" : "Fullscreen"}
           </Button>
         </header>
 
@@ -153,7 +182,7 @@ export function JoinClient({ initialCode }: { initialCode: string }) {
             hasSponsors ? (
               <SponsorStrip
                 assets={bundle.assets}
-                className="mx-auto w-full max-w-4xl rounded-[24px] border border-white/10 bg-black/45 px-5 py-5 backdrop-blur sm:px-6 sm:py-6"
+                className="viewer-sponsor"
                 force={bundle.force}
                 mode={bundle.timer.sponsor_mode}
                 rotationSeconds={bundle.timer.rotation_seconds}

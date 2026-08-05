@@ -92,7 +92,7 @@ export function formatSeconds(totalSeconds: number) {
 
 export function stateTone(state: EffectiveTimerState) {
   if (state === "running") return "live";
-  if (state === "paused") return "warning";
-  if (state === "ended") return "danger";
+  if (state === "paused") return "neutral";
+  if (state === "ended") return "sand";
   return "neutral";
 }

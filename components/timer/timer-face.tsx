@@ -65,19 +65,22 @@ export function TimerFace({
       className={cn(
         "relative overflow-hidden rounded-[var(--radius-xl)] border border-white/10 bg-[var(--color-surface-dark)] text-[var(--color-foreground-on-dark)] shadow-[var(--shadow-strong)]",
         variant === "viewer" ? "p-7 sm:p-10" : "p-5 sm:p-6",
+        variant === "viewer" && "viewer-face",
+        variant === "viewer" && (viewerHasSponsors ? "viewer-face--with-image" : "viewer-face--without-image"),
         className,
       )}
     >
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.045)_1px,transparent_1px)] bg-[size:32px_32px]" />
+      <div className="viewer-face__grid absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.045)_1px,transparent_1px)] bg-[size:32px_32px]" />
 
-      <div className="relative z-10">
+      <div className={cn("relative z-10", variant === "viewer" && "viewer-face__content")}>
         <div
           className={cn(
             "flex flex-wrap items-center justify-between gap-3",
             variant === "admin" ? "mb-3" : "mb-5",
+            variant === "viewer" && "viewer-face__header",
           )}
         >
-          <div>
+          <div className={variant === "viewer" ? "viewer-face__heading" : undefined}>
             <p className="text-[11px] font-black uppercase tracking-[.24em] text-white/55">
               CTimer · {timer.code}
             </p>
@@ -89,16 +92,19 @@ export function TimerFace({
                   : variant === "admin"
                     ? "text-xl sm:text-2xl"
                     : "text-2xl",
+                variant === "viewer" && "viewer-face__title",
               )}
             >
               {timer.name}
             </h1>
           </div>
-          <StatusBadge tone={stateTone(snapshot.state)}>{snapshot.label}</StatusBadge>
+          <StatusBadge className={variant === "viewer" ? "viewer-face__status" : undefined} tone={stateTone(snapshot.state)}>
+            {snapshot.label}
+          </StatusBadge>
         </div>
 
         {contentAboveTimer ? (
-          <div className={cn(variant === "viewer" ? "mb-6" : "mb-4")}>{contentAboveTimer}</div>
+          <div className={cn(variant === "viewer" ? "viewer-face__asset" : "mb-4")}>{contentAboveTimer}</div>
         ) : null}
 
         <div
@@ -117,6 +123,7 @@ export function TimerFace({
                   ? "text-[clamp(2.15rem,5.3vw,3.85rem)] whitespace-nowrap"
                   : "text-[clamp(2.4rem,5.8vw,4.3rem)] whitespace-nowrap"
                 : "text-[clamp(3.6rem,9vw,7rem)]",
+            variant === "viewer" && "viewer-face__time",
           )}
         >
           {preciseDisplay ? (
@@ -136,6 +143,7 @@ export function TimerFace({
             className={cn(
               "font-bold uppercase tracking-[.14em] text-[var(--color-accent)]",
               variant === "admin" ? "mt-3 text-xs" : "mt-4 text-sm",
+              variant === "viewer" && "viewer-face__scheduled",
             )}
           >
             Inicia en {formatSeconds(snapshot.startsInSeconds)}
@@ -146,10 +154,16 @@ export function TimerFace({
           className={cn(
             "overflow-hidden rounded-full bg-white/10",
             variant === "admin" ? "mt-4 h-2" : "mt-7 h-3",
+            variant === "viewer" && "viewer-face__progress",
           )}
+          aria-label={`Progreso: ${Math.round(snapshot.progress * 100)}%`}
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={Math.round(snapshot.progress * 100)}
+          role="progressbar"
         >
           <div
-            className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300"
+            className="viewer-face__progress-fill h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300"
             style={{ width: `${snapshot.progress * 100}%` }}
           />
         </div>
@@ -158,6 +172,7 @@ export function TimerFace({
           className={cn(
             "grid gap-3 font-bold uppercase tracking-[.12em] text-white/55 sm:grid-cols-3",
             variant === "admin" ? "mt-4 text-[11px]" : "mt-5 text-xs",
+            variant === "viewer" && "viewer-face__metadata",
           )}
         >
           <span>Inicio: {start}</span>
@@ -174,7 +189,7 @@ function TimeDigits({ parts }: { parts: string[] }) {
     <span className="inline-flex items-baseline">
       {parts.map((part, index) => (
         <span className="inline-flex items-baseline" key={`${part}-${index}`}>
-          <span className="inline-flex w-[2.18ch] justify-center">{part}</span>
+          <span className={cn("inline-flex min-w-[2.18ch] justify-center", part.length > 2 && "min-w-[3.15ch]")}>{part}</span>
           {index < parts.length - 1 ? (
             <span className="inline-flex w-[0.48ch] justify-center">:</span>
           ) : null}
